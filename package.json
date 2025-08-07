@@ -1,0 +1,70 @@
+{
+  "name": "markdown-docx-converter",
+  "version": "1.0.0",
+  "description": "Advanced bidirectional Markdown ??? DOCX converter with Mermaid diagrams and professional styling",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "md-docx": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "cli": "node dist/cli/index.js",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "markdown",
+    "docx",
+    "converter",
+    "mermaid",
+    "word",
+    "documents",
+    "typescript"
+  ],
+  "author": "PMO Documentation Team",
+  "license": "MIT",
+  "dependencies": {
+    "ajv": "^8.12.0",
+    "canvas": "^3.1.2",
+    "chalk": "^4.1.2",
+    "commander": "^11.1.0",
+    "docx": "^8.5.0",
+    "fs-extra": "^11.1.1",
+    "mammoth": "^1.6.0",
+    "marked": "^9.1.6",
+    "mermaid": "^10.6.1",
+    "mime-types": "^2.1.35",
+    "ora": "^5.4.1",
+    "puppeteer": "^21.5.2",
+    "sharp": "^0.34.3",
+    "turndown": "^7.1.2",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/jest": "^29.5.8",
+    "@types/mime-types": "^2.1.4",
+    "@types/node": "^20.9.0",
+    "@types/turndown": "^5.0.4",
+    "@types/uuid": "^9.0.7",
+    "@typescript-eslint/eslint-plugin": "^6.11.0",
+    "@typescript-eslint/parser": "^6.11.0",
+    "eslint": "^8.54.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist/",
+    "templates/",
+    "README.md"
+  ]
+}
