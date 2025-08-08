@@ -174,14 +174,15 @@ export class MarkdownToDocxConverter {
   }
 
   private createHeading(token: any): Paragraph {
-    const bookmarkId = `heading_${++this.bookmarkCounter}`;
-    const anchor = this.generateAnchor(token.text);
+  const anchor = this.generateAnchor(token.text);
+  this.bookmarkCounter += 1;
     const headingText = this.decodeHtmlEntities(token.text);
 
     return new Paragraph({
       heading: this.getHeadingLevel(token.depth),
       children: [
-        new BookmarkStart(bookmarkId, this.bookmarkCounter),
+    // Use anchor as bookmark name so InternalHyperlink can target it
+    new BookmarkStart(anchor, this.bookmarkCounter),
         new TextRun({
           text: headingText,
           bold: true,
@@ -247,38 +248,41 @@ export class MarkdownToDocxConverter {
     });
   }
 
-  private createList(token: any): Paragraph[] {
+  private createList(token: any, indentLeft: number = 720): Paragraph[] {
     const paragraphs: Paragraph[] = [];
 
     token.items.forEach((item: any, index: number) => {
-      const bullet = token.ordered ? `${index + 1}.` : '???';
-      let itemText = '';
-      
-      // Extraire le texte de l'item en g??rant les diff??rents formats
-      if (typeof item.text === 'string') {
-        itemText = item.text;
-      } else if (item.tokens && Array.isArray(item.tokens)) {
-        // Extraire le texte des tokens
-        itemText = this.extractTextFromTokens(item.tokens);
-      } else {
-        itemText = String(item.text || '');
-      }
-      
-      // Traiter le formatage Markdown dans le texte de l'item
-      const formattedRuns = this.parseSimpleMarkdown(itemText);
-      
-      // Cr??er les enfants avec la puce + le texte format??
+      // Puce visuelle simple ou numérotation
+      const bullet = token.ordered ? `${index + 1}.` : '•';
+
+      // Les items de liste de marked ont généralement des tokens inline (texte, strong, em, link, code...)
+      const inlineTokens = Array.isArray(item.tokens)
+        ? item.tokens.filter((t: any) => t.type !== 'list')
+        : [{ type: 'text', text: typeof item.text === 'string' ? item.text : String(item.text || '') }];
+
+      const formattedRuns = this.processInlineTokens(inlineTokens);
+
       const listChildren: TextRun[] = [
         new TextRun({ text: `${bullet} ` }),
-        ...formattedRuns
+        ...formattedRuns,
       ];
-      
+
       paragraphs.push(new Paragraph({
         children: listChildren,
         indent: {
-          left: 720, // 0.5 inch
+          left: indentLeft, // indentation for this list level
         },
       }));
+
+      // Gérer d'éventuelles sous-listes imbriquées
+      if (Array.isArray(item.tokens)) {
+        item.tokens
+          .filter((t: any) => t.type === 'list')
+          .forEach((subList: any) => {
+            const subParas = this.createList(subList, indentLeft + 720);
+            paragraphs.push(...subParas);
+          });
+      }
     });
 
     return paragraphs;
@@ -346,40 +350,38 @@ export class MarkdownToDocxConverter {
   }
 
   private createTable(token: any): Table {
-    const headerCells = token.header.map((cell: string) => {
-      const cellText = String(cell);
-      const formattedRuns = this.parseSimpleMarkdown(cellText, { bold: true });
-      
-      return new TableCell({
-        children: [new Paragraph({
-          children: formattedRuns
-        })],
-        shading: { fill: 'E6E6E6' },
-      });
-    });
+    const cellRuns = (cell: any, isHeader = false): TextRun[] => {
+      const baseStyle = isHeader ? { bold: true } : {};
+      if (typeof cell === 'string') {
+        return this.parseSimpleMarkdown(cell, baseStyle);
+      }
+      if (cell && Array.isArray(cell.tokens)) {
+        return this.processInlineTokensWithStyle(cell.tokens, baseStyle);
+      }
+      if (cell && typeof cell.text === 'string') {
+        return this.parseSimpleMarkdown(cell.text, baseStyle);
+      }
+      // Fallback: convertir en chaîne proprement
+      return [new TextRun({ text: String(cell ?? ''), ...baseStyle })];
+    };
 
-    const rows = [new TableRow({ children: headerCells })];
+    const headerCells = token.header.map((cell: any) => new TableCell({
+      children: [new Paragraph({ children: cellRuns(cell, true) })],
+      shading: { fill: 'E6E6E6' },
+    }));
 
-    token.rows.forEach((rowData: string[]) => {
-      const dataCells = rowData.map((cell: string) => {
-        const cellText = String(cell);
-        const formattedRuns = this.parseSimpleMarkdown(cellText);
-        
-        return new TableCell({
-          children: [new Paragraph({
-            children: formattedRuns
-          })],
-        });
-      });
+    const rows: TableRow[] = [new TableRow({ children: headerCells })];
+
+    token.rows.forEach((rowData: any[]) => {
+      const dataCells = rowData.map((cell: any) => new TableCell({
+        children: [new Paragraph({ children: cellRuns(cell, false) })],
+      }));
       rows.push(new TableRow({ children: dataCells }));
     });
 
     return new Table({
       rows,
-      width: {
-        size: 100,
-        type: WidthType.PERCENTAGE,
-      },
+      width: { size: 100, type: WidthType.PERCENTAGE },
     });
   }
 
@@ -621,7 +623,7 @@ export class MarkdownToDocxConverter {
     return new Paragraph({
       children: [
         new TextRun({
-          text: "Table des mati??res",
+          text: "Table des matières",
           bold: true,
           size: 32,
         }),
@@ -652,10 +654,10 @@ export class MarkdownToDocxConverter {
     const tocParagraphs: Paragraph[] = [];
     
     // Title
-    tocParagraphs.push(new Paragraph({
+  tocParagraphs.push(new Paragraph({
       children: [
         new TextRun({
-          text: "Table des mati??res",
+      text: "Table des matières",
           bold: true,
           size: 32,
         }),
@@ -751,7 +753,8 @@ export class MarkdownToDocxConverter {
   private decodeHtmlEntities(text: string): string {
     return text
       .replace(/&#x20;/g, ' ')
-      .replace(/&#8209;/g, '???')
+  // Non-breaking hyphen
+  .replace(/&#8209;/g, '‑')
       .replace(/&nbsp;/g, ' ')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
