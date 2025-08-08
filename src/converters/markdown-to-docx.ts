@@ -62,8 +62,20 @@ export class MarkdownToDocxConverter {
         };
       }
 
+      // Remove optional YAML front matter and extract simple metadata
+      const { content: contentNoFM, meta } = this.stripFrontMatter(markdownContent);
+
+      // Merge parsed metadata into options (caller options win)
+      const effOptions: MarkdownToDocxOptions = {
+        ...options,
+        title: options.title || meta.title,
+        author: options.author || meta.author,
+        description: options.description || meta.description,
+        subject: options.subject || meta.description,
+      };
+
       // Process Mermaid diagrams first and get PNG images
-      const mermaidResult = await this.mermaidProcessor.processContent(markdownContent);
+      const mermaidResult = await this.mermaidProcessor.processContent(contentNoFM);
       
       // Store images for later use in DOCX
       mermaidResult.images.forEach(image => {
@@ -71,7 +83,7 @@ export class MarkdownToDocxConverter {
       });
 
       // Parse markdown
-      const tokens = marked.lexer(mermaidResult.content);
+  const tokens = marked.lexer(mermaidResult.content);
       
       // Process links
       const linkResult = options.preserveLinks 
@@ -91,7 +103,7 @@ export class MarkdownToDocxConverter {
       }
 
       // Create document
-      const document = this.createDocument(elements, options);
+  const document = this.createDocument(elements, effOptions);
       
       // Generate buffer
       const buffer = await Packer.toBuffer(document);
@@ -137,6 +149,42 @@ export class MarkdownToDocxConverter {
         }
       };
     }
+  }
+
+  /**
+   * Strip YAML front matter at the beginning of the markdown file and parse a few common keys.
+   */
+  private stripFrontMatter(markdown: string): { content: string; meta: { title?: string; author?: string; description?: string } } {
+    const meta: { title?: string; author?: string; description?: string } = {};
+    if (!markdown) return { content: markdown, meta };
+
+    // Only treat as front matter if it starts with --- on the very first line
+    if (!markdown.startsWith('---')) return { content: markdown, meta };
+
+    // Find the closing --- after the first line
+    const end = markdown.indexOf('\n---', 3);
+    if (end === -1) return { content: markdown, meta };
+
+    const fmBlock = markdown.substring(3, end).trim();
+    const rest = markdown.substring(end + 4); // skip leading \n before second ---
+
+    // Parse simple key: value pairs (quoted or not)
+    const lines = fmBlock.split(/\r?\n/);
+    for (const line of lines) {
+      const m = line.match(/^\s*([A-Za-z0-9_-]+)\s*:\s*(.*)\s*$/);
+      if (!m) continue;
+      const key = m[1].toLowerCase();
+      let value = m[2];
+      // Trim surrounding quotes if present
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith('\'') && value.endsWith('\''))) {
+        value = value.substring(1, value.length - 1);
+      }
+      if (['title','author','description','subject'].includes(key)) {
+        (meta as any)[key] = value;
+      }
+    }
+
+    return { content: rest.replace(/^\s*\r?\n/, ''), meta };
   }
 
   private async processTokens(tokens: any[]): Promise<(Paragraph | Table)[]> {
