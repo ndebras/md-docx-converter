@@ -28,7 +28,7 @@ class ConverterCLI {
   init(): void {
     program
       .name('md-docx')
-      .description('Professional Markdown ??? DOCX converter with Mermaid diagrams and advanced styling')
+      .description('Markdown <-> DOCX converter with Mermaid diagrams and advanced styling')
       .version('1.0.0');
 
     this.setupCommands();

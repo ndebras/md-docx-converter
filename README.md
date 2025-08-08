@@ -11,7 +11,7 @@
 
 ## 🎯 **Overview**
 
-A Node.js application designed to seamlessly convert Markdown files to DOCX format and vice versa, with enterprise-grade features for professional document generation. Perfect for technical documentation, reports, and automated document workflows.
+A Node.js application designed to convert Markdown files (with Mermaid support) to DOCX format and vice versa Perfect for technical documentation, reports, and automated document workflows.
 
 ---
 
@@ -50,6 +50,7 @@ A Node.js application designed to seamlessly convert Markdown files to DOCX form
 - **Extensive logging** for debugging
 - **Memory-efficient processing** for large documents
 
+
 ##  Installation
 
 ```bash
@@ -61,6 +62,52 @@ For global CLI usage:
 ```bash
 npm install -g markdown-docx-converter
 ```
+
+##  CLI (Command Line) Usage
+
+You can run the CLI globally (md-docx), locally (node dist/cli/index.js), or via npm script (npm run cli -- …).
+
+- Global: md-docx <command> [options]
+- Local: node dist/cli/index.js <command> [options]
+- NPM: npm run cli -- <command> [options]
+
+Main commands:
+- convert <input.md>  → DOCX
+- extract <input.docx> → Markdown
+- batch <input-dir>   → bulk convert
+- validate <input.md> → check file
+- stats <input>        → show stats
+- list                 → templates & themes
+
+Common options:
+- -o, --output <file>
+- -t, --template <name> (default: professional-report)
+- -m, --mermaid-theme <theme> (default: default)
+- --title <text> --author <text> --subject <text>
+- --toc (table of contents)
+- --no-links (disable link processing)
+- --orientation <portrait|landscape>
+- --verbose
+
+Examples (PowerShell):
+
+```powershell
+# Convert Markdown → DOCX with TOC (Make sure that an output folder exists or adapt the -o parameter)
+node dist/cli/index.js convert .\demo-complete.md -o .\output\demo-complete.docx --template professional-report --toc
+
+# Global CLI (if installed with -g)
+md-docx convert .\sample.md -o .\output\sample.docx --toc --title "Demo" --author "Team"
+
+# Extract DOCX → Markdown with images
+node dist/cli/index.js extract .\sample.docx -o .\extracted.md --extract-images --image-dir images --image-format png
+
+# Batch convert a folder to DOCX
+node dist/cli/index.js batch .\docs -o .\output -f docx --template professional-report --toc
+
+# Validate and show stats
+node dist/cli/index.js validate .\demo-complete.md ; node dist/cli/index.js stats .\demo-complete.md
+```
+
 
 ##  Quick Start
 
