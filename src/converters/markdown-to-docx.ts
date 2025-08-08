@@ -17,6 +17,7 @@ import {
   SectionType,
   PageBreak,
   Packer,
+  LevelFormat,
 } from 'docx';
 import { marked } from 'marked';
 import { MermaidPNGProcessor } from '../processors/mermaid-png-processor';
@@ -308,7 +309,7 @@ export class MarkdownToDocxConverter {
     });
   }
 
-  private createList(token: any, indentLeft: number = 720): Paragraph[] {
+  private createList(token: any, level: number = 0): Paragraph[] {
     const paragraphs: Paragraph[] = [];
 
   token.items.forEach((item: any, index: number) => {
@@ -336,8 +337,6 @@ export class MarkdownToDocxConverter {
       }
 
   const checkbox = isTask ? (isChecked ? '☑' : '☐') : null;
-  // Puce visuelle simple ou numérotation ou checkbox
-  const bullet = checkbox ? checkbox : (token.ordered ? `${index + 1}.` : '•');
 
       // Si item de tâche, enlever le marqueur [ ] / [x] du premier token texte
       if (isTask && inlineTokens.length > 0) {
@@ -353,24 +352,31 @@ export class MarkdownToDocxConverter {
 
       const formattedRuns = this.processInlineTokens(inlineTokens);
 
-      const listChildren: any[] = [
-        new TextRun({ text: `${bullet} ` }),
-        ...formattedRuns,
-      ];
+      const listChildren: any[] = [];
+      if (isTask) {
+        listChildren.push(new TextRun({ text: `${checkbox} ` }));
+      }
+      listChildren.push(...formattedRuns);
 
-      paragraphs.push(new Paragraph({
-        children: listChildren,
-        indent: {
-          left: indentLeft, // indentation for this list level
-        },
-      }));
+      const paraOptions: any = { children: listChildren };
+      if (!isTask) {
+        paraOptions.numbering = {
+          reference: token.ordered ? 'md-numbered' : 'md-bullet',
+          level: Math.max(0, Math.min(2, level)),
+        };
+      } else {
+        // Visual indent for task items to align with list levels
+        paraOptions.indent = { left: 720 * (level + 1) };
+      }
+
+      paragraphs.push(new Paragraph(paraOptions));
 
       // Gérer d'éventuelles sous-listes imbriquées
       if (Array.isArray(item.tokens)) {
         item.tokens
           .filter((t: any) => t.type === 'list')
           .forEach((subList: any) => {
-            const subParas = this.createList(subList, indentLeft + 720);
+            const subParas = this.createList(subList, level + 1);
             paragraphs.push(...subParas);
           });
       }
@@ -831,8 +837,32 @@ export class MarkdownToDocxConverter {
     return new Document({
       creator: options.author || 'Markdown-DOCX Converter',
       title: options.title || 'Converted Document',
-      description: options.subject || '',
+      description: options.description || options.subject || '',
       styles: template.styles,
+      numbering: {
+        config: [
+          {
+            reference: 'md-numbered',
+            levels: [0,1,2].map(l => ({
+              level: l,
+              format: LevelFormat.DECIMAL,
+              text: `%${l+1}.`,
+              alignment: AlignmentType.LEFT,
+              style: { paragraph: { indent: { left: 720 * (l + 1), hanging: 360 } } }
+            }))
+          },
+          {
+            reference: 'md-bullet',
+            levels: [0,1,2].map(l => ({
+              level: l,
+              format: LevelFormat.BULLET,
+              text: l === 0 ? '•' : l === 1 ? '◦' : '▪',
+              alignment: AlignmentType.LEFT,
+              style: { paragraph: { indent: { left: 720 * (l + 1), hanging: 360 } } }
+            }))
+          }
+        ]
+      },
       sections: [{
         properties: {
           type: SectionType.CONTINUOUS,
