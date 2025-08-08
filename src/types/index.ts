@@ -47,6 +47,10 @@ export interface DocxToMarkdownOptions extends ConversionOptions {
   imageOutputDir?: string;
   /** Image format for extraction */
   imageFormat?: 'png' | 'jpg' | 'svg';
+  /** Show detailed Mammoth/Turndown warnings in CLI and results */
+  detailedWarnings?: boolean;
+  /** Add anchors to headings to support internal links */
+  headingAnchors?: 'html' | 'pandoc' | 'none';
 }
 
 export interface PageMargins {

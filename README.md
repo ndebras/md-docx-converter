@@ -517,8 +517,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ##  Roadmap
 
 ### Version 1.0
-- Status:
-  - DOCX → Markdown extraction works; see “Known Bugs and Limitations” for remaining edge cases.
+- FIXME : 
+  - [ ] Conversion of docx to mark down has issues, some are known and some are still to be discoverd :-)
+    - [ ] Nested lists conversion not working properly
+    - [ ] Internal link conversion not working properly
+  - [ ] CLI arguments should have default values so that it can be used without specifying all of them each time
 
 ### Version 1.1 (Future)
 - [ ] Additional document templates
