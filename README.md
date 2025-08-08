@@ -500,27 +500,21 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ##  Roadmap
 
-### Version 1.1 (Planned)
+### Version 1.0
+- TOFIX : 
+  - [ ] Conversion of docx to mark down is not working
+
+### Version 1.1 (Future)
 - [ ] Additional document templates
 - [ ] Enhanced Mermaid theme customization
 - [ ] PDF export support
-- [ ] Real-time preview API
 
 ### Version 1.2 (Future)
-- [ ] Plugin system for custom processors
 - [ ] Advanced image processing
-- [ ] Collaborative editing features
-- [ ] Cloud storage integration
+- [ ] Plugin system for custom processors
 
 ##  Changelog
 
-### **Version 1.0.0**
-- ✅ Initial release
-- ✅ Bidirectional Markdown ↔ DOCX conversion
-- ✅ Mermaid diagram support
-- ✅ Professional templates
-- ✅ CLI interface
-- ✅ Comprehensive documentation
 
 ---
 
