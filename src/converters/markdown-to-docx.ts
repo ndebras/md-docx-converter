@@ -9,6 +9,7 @@ import {
   TableCell,
   WidthType,
   ImageRun,
+  ExternalHyperlink,
   InternalHyperlink,
   BookmarkStart,
   BookmarkEnd,
@@ -233,7 +234,7 @@ export class MarkdownToDocxConverter {
   }
 
   private createHeading(token: any): Paragraph {
-  const anchor = this.generateAnchor(token.text);
+  const anchor = this.sanitizeBookmarkName(this.generateAnchor(token.text));
   this.bookmarkCounter += 1;
     const headingText = this.decodeHtmlEntities(token.text);
 
@@ -310,18 +311,49 @@ export class MarkdownToDocxConverter {
   private createList(token: any, indentLeft: number = 720): Paragraph[] {
     const paragraphs: Paragraph[] = [];
 
-    token.items.forEach((item: any, index: number) => {
-      // Puce visuelle simple ou numérotation
-      const bullet = token.ordered ? `${index + 1}.` : '•';
+  token.items.forEach((item: any, index: number) => {
+      // Déterminer si c'est une tâche (checkbox) et choisir le préfixe
+      // Detect GitHub task list markers
+      let isTask = !!item.task || /^\s*\[(x|X| )\]/.test(item.raw || '');
+      let isChecked = !!item.checked;
 
       // Les items de liste de marked ont généralement des tokens inline (texte, strong, em, link, code...)
       const inlineTokens = Array.isArray(item.tokens)
         ? item.tokens.filter((t: any) => t.type !== 'list')
         : [{ type: 'text', text: typeof item.text === 'string' ? item.text : String(item.text || '') }];
 
+      // Fallback detection based on first inline text content
+      if (!isTask && inlineTokens.length > 0) {
+        const firstText = (inlineTokens[0].type === 'text') ? inlineTokens[0].text
+          : (inlineTokens[0].type === 'paragraph' && Array.isArray(inlineTokens[0].tokens) && inlineTokens[0].tokens[0]?.type === 'text')
+            ? inlineTokens[0].tokens[0].text
+            : '';
+        const m = /^\s*\[(x|X| )\]\s*/.exec(firstText || '');
+        if (m) {
+          isTask = true;
+          isChecked = m[1].toLowerCase() === 'x';
+        }
+      }
+
+  const checkbox = isTask ? (isChecked ? '☑' : '☐') : null;
+  // Puce visuelle simple ou numérotation ou checkbox
+  const bullet = checkbox ? checkbox : (token.ordered ? `${index + 1}.` : '•');
+
+      // Si item de tâche, enlever le marqueur [ ] / [x] du premier token texte
+      if (isTask && inlineTokens.length > 0) {
+        if (inlineTokens[0].type === 'text' && typeof inlineTokens[0].text === 'string') {
+          inlineTokens[0].text = inlineTokens[0].text.replace(/^\s*\[(x|X| )\]\s*/, '');
+        } else if (inlineTokens[0].type === 'paragraph' && Array.isArray(inlineTokens[0].tokens) && inlineTokens[0].tokens.length > 0) {
+          const first = inlineTokens[0].tokens[0];
+          if (first && first.type === 'text' && typeof first.text === 'string') {
+            first.text = first.text.replace(/^\s*\[(x|X| )\]\s*/, '');
+          }
+        }
+      }
+
       const formattedRuns = this.processInlineTokens(inlineTokens);
 
-      const listChildren: TextRun[] = [
+      const listChildren: any[] = [
         new TextRun({ text: `${bullet} ` }),
         ...formattedRuns,
       ];
@@ -475,8 +507,8 @@ export class MarkdownToDocxConverter {
     });
   }
 
-  private processInlineTokens(tokens: any[]): TextRun[] {
-    const runs: TextRun[] = [];
+  private processInlineTokens(tokens: any[]): any[] {
+    const runs: any[] = [];
 
     tokens.forEach(token => {
       switch (token.type) {
@@ -528,17 +560,29 @@ export class MarkdownToDocxConverter {
           }));
           break;
         case 'link':
-          if (token.href.startsWith('http')) {
-            runs.push(new TextRun({
-              text: this.decodeHtmlEntities(token.text),
-              color: '0000FF',
-              underline: {},
+          if (typeof token.href === 'string' && token.href.startsWith('http')) {
+            runs.push(new ExternalHyperlink({
+              link: token.href,
+              children: [
+                new TextRun({
+                  text: this.decodeHtmlEntities(token.text),
+                  style: 'Hyperlink',
+                })
+              ]
             }));
           } else {
-            runs.push(new TextRun({
-              text: this.decodeHtmlEntities(token.text),
-              color: '0000FF',
-              underline: {},
+            // Internal link (anchor or section reference)
+            const anchorText = typeof token.href === 'string' ? token.href.replace(/^#/, '') : '';
+            const anchor = this.sanitizeBookmarkName(anchorText);
+            runs.push(new InternalHyperlink({
+              anchor,
+              children: [
+                new TextRun({
+                  text: this.decodeHtmlEntities(token.text),
+                  color: '0000FF',
+                  underline: {},
+                })
+              ]
             }));
           }
           break;
@@ -568,8 +612,8 @@ export class MarkdownToDocxConverter {
     return runs;
   }
 
-  private processInlineTokensWithStyle(tokens: any[], baseStyle: any): TextRun[] {
-    const runs: TextRun[] = [];
+  private processInlineTokensWithStyle(tokens: any[], baseStyle: any): any[] {
+    const runs: any[] = [];
 
     tokens.forEach(token => {
       switch (token.type) {
@@ -624,9 +668,9 @@ export class MarkdownToDocxConverter {
             font: 'Courier New'
           }));
           break;
-        default:
+    default:
           if (token.text) {
-            runs.push(new TextRun({ 
+      runs.push(new TextRun({ 
               text: token.text,
               ...baseStyle
             }));
@@ -753,13 +797,13 @@ export class MarkdownToDocxConverter {
     }));
 
     // TOC entries
-    this.headings.forEach(heading => {
+  this.headings.forEach(heading => {
       const indent = (heading.level - 1) * 360; // 0.25 inch per level
       
       tocParagraphs.push(new Paragraph({
         children: [
           new InternalHyperlink({
-            anchor: heading.anchor,
+      anchor: this.sanitizeBookmarkName(heading.anchor),
             children: [
               new TextRun({
                 text: heading.text,
@@ -804,6 +848,16 @@ export class MarkdownToDocxConverter {
       .replace(/[^\w\s-]/g, '')
       .replace(/\s+/g, '-')
       .trim();
+  }
+
+  /** Ensure the anchor conforms to Word bookmark naming restrictions */
+  private sanitizeBookmarkName(anchor: string): string {
+    return anchor
+      .replace(/^#+/, '')
+      .replace(/[^a-zA-Z0-9_\-]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '')
+      .substring(0, 40) || 'a';
   }
 
   private extractTextFromTokens(tokens: any[]): string {
