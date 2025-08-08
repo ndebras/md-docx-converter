@@ -30,6 +30,7 @@ import type {
   ConversionMetadata, 
   DocumentTemplate 
 } from '../types';
+import sharp from 'sharp';
 
 export class MarkdownToDocxConverter {
   private mermaidProcessor: MermaidPNGProcessor;
@@ -211,13 +212,13 @@ export class MarkdownToDocxConverter {
       case 'heading':
         return this.createHeading(token);
       case 'paragraph':
-        return this.createParagraph(token);
+        return await this.createParagraph(token);
       case 'list':
         return this.createList(token);
       case 'blockquote':
         return this.createBlockquote(token);
       case 'code':
-        return this.createCodeBlock(token); // Returns Paragraph[] now
+        return this.createCodeBlock(token);
       case 'table':
         return this.createTable(token);
       case 'hr':
@@ -225,7 +226,7 @@ export class MarkdownToDocxConverter {
       case 'html':
         return this.createHtml(token);
       case 'image':
-        return this.createImageParagraph(token);
+        return await this.createImageParagraph(token);
       case 'space':
         return null;
       default:
@@ -253,44 +254,46 @@ export class MarkdownToDocxConverter {
     });
   }
 
-  private createParagraph(token: any): Paragraph {
+  private async createParagraph(token: any): Promise<Paragraph> {
     // Check if this paragraph contains only an image
     if (token.tokens && token.tokens.length === 1 && token.tokens[0].type === 'image') {
-      return this.createImageParagraph(token.tokens[0]);
+      return await this.createImageParagraph(token.tokens[0]);
     }
-    
     return new Paragraph({
       children: this.processInlineTokens(token.tokens || [{ type: 'text', text: token.text }]),
     });
   }
 
-  private createImageParagraph(token: any): Paragraph {
+  private async createImageParagraph(token: any): Promise<Paragraph> {
     // Check if it's a Mermaid diagram reference
     if (token.href && token.href.includes('mermaid-') && token.href.endsWith('.png')) {
-      // Extract the Mermaid ID from the filename
       const mermaidId = token.href.replace('mermaid-', '').replace('.png', '');
       const imageBuffer = this.mermaidImages.get(mermaidId);
-      
       if (imageBuffer) {
+        // Determine intrinsic size using sharp metadata; fallback to defaults
+        let width = 600;
+        let height = 450;
+        try {
+          const meta = await sharp(imageBuffer).metadata();
+          if (meta.width && meta.height) {
+            width = meta.width;
+            height = meta.height;
+          }
+        } catch {
+          // ignore
+        }
         return new Paragraph({
           children: [
             new ImageRun({
               data: imageBuffer,
-              transformation: {
-                width: 600,
-                height: 450,
-              },
+              transformation: { width, height },
             }),
           ],
           alignment: AlignmentType.CENTER,
-          spacing: {
-            before: 200,
-            after: 200,
-          },
+          spacing: { before: 200, after: 200 },
         });
       }
     }
-    
     // Fallback for other images or missing Mermaid images
     return new Paragraph({
       children: [
@@ -298,14 +301,11 @@ export class MarkdownToDocxConverter {
           text: `[Image: ${token.alt || token.href || 'Non disponible'}]`,
           italics: true,
           color: '0066CC',
-          size: 24
-        })
+          size: 24,
+        }),
       ],
       alignment: AlignmentType.CENTER,
-      spacing: {
-        before: 200,
-        after: 200,
-      },
+      spacing: { before: 200, after: 200 },
     });
   }
 
