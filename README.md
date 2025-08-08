@@ -1,10 +1,10 @@
 # Markdown-DOCX Converter
 
-🚀 **Professional bidirectional Markdown ↔ DOCX converter** with advanced features including Mermaid diagram support, professional styling templates, and comprehensive link processing.
+🚀 **NodeJS Markdown ↔ DOCX converter** with advanced features including Mermaid diagram support, professional styling templates, and comprehensive link processing.
 
 [![Build Status](https://img.shields.io/badge/build-passing-green.svg)](/)
 [![Coverage](https://img.shields.io/badge/coverage-85%25-green.svg)](/)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](/)
+[![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)](/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](/)
 
 ---
@@ -517,8 +517,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ##  Roadmap
 
 ### Version 1.0
-- Status:
-  - DOCX → Markdown extraction works; see “Known Bugs and Limitations” for remaining edge cases.
+- FIXME : 
+  - [ ] Conversion of docx to mark down has issues, some are known and some are still to be discoverd :-)
+    - [ ] Nested lists conversion not working properly
+    - [ ] Internal link conversion not working properly
+  - [ ] CLI arguments should have default values so that it can be used without specifying all of them each time
 
 ### Version 1.1 (Future)
 - [ ] Additional document templates
