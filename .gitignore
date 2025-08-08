@@ -82,6 +82,7 @@ out
 .nuxt
 dist
 dist/*
+dist/*/**
 
 # Gatsby files
 .cache/
@@ -138,3 +139,25 @@ dist/*
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+dist/converters/docx-to-markdown.d.ts
+dist/converters/docx-to-markdown.js
+dist/converters/docx-to-markdown.js.map
+dist/converters/markdown-to-docx.d.ts
+dist/converters/markdown-to-docx.js
+dist/converters/markdown-to-docx.js.map
+dist/processors/link-processor.d.ts
+dist/processors/link-processor.js
+dist/processors/mermaid-png-processor.d.ts
+dist/processors/mermaid-png-processor.js
+dist/processors/mermaid-png-processor.js.map
+dist/processors/mermaid-processor.d.ts
+dist/processors/mermaid-processor.js
+dist/processors/mermaid-processor.js.map
+dist/styles/document-templates.d.ts
+dist/styles/document-templates.js
+dist/types/index.d.ts
+dist/types/index.js
+dist/utils/index.d.ts
+dist/utils/index.js
+dist/utils/logger.d.ts
+dist/utils/logger.js
