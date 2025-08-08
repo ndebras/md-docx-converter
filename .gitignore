@@ -84,6 +84,7 @@ dist
 dist/*
 dist/*/**
 
+#
 # Gatsby files
 .cache/
 # Comment in the public line in if your project uses Gatsby and not Next.js
@@ -161,3 +162,13 @@ dist/utils/index.d.ts
 dist/utils/index.js
 dist/utils/logger.d.ts
 dist/utils/logger.js
+dist/cli/index.js.map
+dist/converters/docx-to-markdown.js.map
+dist/converters/markdown-to-docx.js.map
+dist/processors/mermaid-png-processor.js.map
+dist/processors/mermaid-processor.js.map
+dist/cli/index.js.map
+dist/converters/docx-to-markdown.js.map
+dist/converters/markdown-to-docx.js.map
+dist/processors/mermaid-png-processor.js.map
+dist/processors/mermaid-processor.js.map
