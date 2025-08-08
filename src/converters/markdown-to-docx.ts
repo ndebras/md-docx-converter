@@ -432,8 +432,21 @@ export class MarkdownToDocxConverter {
 
     tokens.forEach(token => {
       switch (token.type) {
+        case 'paragraph':
+          // Some parsers (marked) wrap inline content in a paragraph token inside lists
+          if (Array.isArray(token.tokens)) {
+            runs.push(...this.processInlineTokens(token.tokens));
+          } else if (token.text) {
+            runs.push(new TextRun({ text: this.decodeHtmlEntities(token.text) }));
+          }
+          break;
         case 'text':
-          runs.push(new TextRun({ text: this.decodeHtmlEntities(token.text) }));
+          // In marked, a text token can itself contain inline tokens (strong/em/link/codespan)
+          if (Array.isArray((token as any).tokens) && (token as any).tokens.length > 0) {
+            runs.push(...this.processInlineTokens((token as any).tokens));
+          } else {
+            runs.push(new TextRun({ text: this.decodeHtmlEntities(token.text) }));
+          }
           break;
         case 'strong':
           // Pour strong, traiter les tokens enfants avec bold=true
@@ -459,7 +472,8 @@ export class MarkdownToDocxConverter {
             }));
           }
           break;
-        case 'code':
+  case 'codespan':
+  case 'code':
           runs.push(new TextRun({ 
             text: this.decodeHtmlEntities(token.text),
             font: 'Courier New'
@@ -511,11 +525,22 @@ export class MarkdownToDocxConverter {
 
     tokens.forEach(token => {
       switch (token.type) {
+        case 'paragraph':
+          if (Array.isArray(token.tokens)) {
+            runs.push(...this.processInlineTokensWithStyle(token.tokens, { ...baseStyle }));
+          } else if (token.text) {
+            runs.push(new TextRun({ text: token.text, ...baseStyle }));
+          }
+          break;
         case 'text':
-          runs.push(new TextRun({ 
-            text: token.text,
-            ...baseStyle
-          }));
+          if (Array.isArray((token as any).tokens) && (token as any).tokens.length > 0) {
+            runs.push(...this.processInlineTokensWithStyle((token as any).tokens, { ...baseStyle }));
+          } else {
+            runs.push(new TextRun({ 
+              text: token.text,
+              ...baseStyle
+            }));
+          }
           break;
         case 'strong':
           // Combiner bold avec le style de base
@@ -543,7 +568,8 @@ export class MarkdownToDocxConverter {
             }));
           }
           break;
-        case 'code':
+  case 'codespan':
+  case 'code':
           runs.push(new TextRun({ 
             text: token.text,
             ...baseStyle,
