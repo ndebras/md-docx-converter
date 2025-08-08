@@ -3,6 +3,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import sharp from 'sharp';
+import mermaid from 'mermaid';
 
 /**
  * Nouveau processeur Mermaid avec g??n??ration PNG compl??te
@@ -83,13 +84,16 @@ export class MermaidPNGProcessor {
     try {
       const page = await this.browser.newPage();
       await page.setViewport({ width: 1200, height: 800 });
+      await page.setOfflineMode(true);
 
-      // HTML pour rendre le diagramme Mermaid
+      const mermaidPath = require.resolve('mermaid/dist/mermaid.min.js');
+
+      // HTML pour rendre le diagramme Mermaid avec le script local
       const html = `
 <!DOCTYPE html>
 <html>
 <head>
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <script src="file://${mermaidPath}"></script>
     <style>
         body {
             margin: 0;
@@ -110,7 +114,7 @@ ${diagramCode}
         mermaid.initialize({
             startOnLoad: true,
             theme: 'default',
-            securityLevel: 'loose',
+            securityLevel: 'strict',
             flowchart: {
                 htmlLabels: true,
                 curve: 'basis'
@@ -170,7 +174,7 @@ ${diagramCode}
     if (!this.browser) {
       this.browser = await puppeteer.launch({
         headless: 'new',
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--allow-file-access-from-files']
       });
     }
   }
