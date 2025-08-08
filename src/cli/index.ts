@@ -159,7 +159,7 @@ class ConverterCLI {
         const elapsed = Date.now() - startTime;
         spinner.succeed(`Conversion completed in ${elapsed}ms`);
         
-        console.log(chalk.green('??? Success:'), `DOCX file created: ${chalk.cyan(outputPath)}`);
+        console.log(chalk.green('   - Success:'), `DOCX file created: ${chalk.cyan(outputPath)}`);
         
         if (result.metadata) {
           console.log(chalk.gray('Statistics:'));
@@ -182,15 +182,15 @@ class ConverterCLI {
 
         if (result.warnings && result.warnings.length > 0) {
           console.log(chalk.yellow('Warnings:'));
-          result.warnings.forEach(warning => console.log(`  ??? ${warning}`));
+          result.warnings.forEach(warning => console.log(`     - ${warning}`));
         }
       } else {
         spinner.fail('Conversion failed');
-        console.error(chalk.red('??? Error:'), result.error?.message || 'Unknown error');
+        console.error(chalk.red('   - Error:'), result.error?.message || 'Unknown error');
         process.exit(1);
       }
     } catch (error) {
-      console.error(chalk.red('??? Fatal error:'), error instanceof Error ? error.message : String(error));
+      console.error(chalk.red('   - Fatal error:'), error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
   }
@@ -232,7 +232,7 @@ class ConverterCLI {
         const elapsed = Date.now() - startTime;
         spinner.succeed(`Extraction completed in ${elapsed}ms`);
         
-        console.log(chalk.green('??? Success:'), `Markdown file created: ${chalk.cyan(outputPath)}`);
+        console.log(chalk.green('   - Success:'), `Markdown file created: ${chalk.cyan(outputPath)}`);
         
         if (result.metadata) {
           console.log(chalk.gray('Statistics:'));
@@ -247,15 +247,15 @@ class ConverterCLI {
 
         if (result.warnings && result.warnings.length > 0) {
           console.log(chalk.yellow('Warnings:'));
-          result.warnings.forEach(warning => console.log(`  ??? ${warning}`));
+          result.warnings.forEach(warning => console.log(`     - ${warning}`));
         }
       } else {
         spinner.fail('Extraction failed');
-        console.error(chalk.red('??? Error:'), result.error?.message || 'Unknown error');
+        console.error(chalk.red('   - Error:'), result.error?.message || 'Unknown error');
         process.exit(1);
       }
     } catch (error) {
-      console.error(chalk.red('??? Fatal error:'), error instanceof Error ? error.message : String(error));
+      console.error(chalk.red('   - Fatal error:'), error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
   }
@@ -271,7 +271,7 @@ class ConverterCLI {
       const outputPath = path.resolve(options.outputDir);
 
       if (!await fs.pathExists(inputPath)) {
-        console.error(chalk.red('??? Error:'), `Input directory not found: ${inputPath}`);
+        console.error(chalk.red('   - Error:'), `Input directory not found: ${inputPath}`);
         process.exit(1);
       }
 
@@ -316,18 +316,18 @@ class ConverterCLI {
       }
 
       // Show results summary
-      console.log(chalk.green(`??? Successful: ${successful}`));
+      console.log(chalk.green(`   - Successful: ${successful}`));
       if (failed > 0) {
-        console.log(chalk.red(`??? Failed: ${failed}`));
+        console.log(chalk.red(`   - Failed: ${failed}`));
         
         const failedFiles = results.filter(r => !r.result.success);
         failedFiles.forEach(({ input, result }) => {
-          console.log(`  ${chalk.red('???')} ${input}: ${result.error?.message || 'Unknown error'}`);
+          console.log(`  ${chalk.red('FAILED')} ${input}: ${result.error?.message || 'Unknown error'}`);
         });
       }
 
     } catch (error) {
-      console.error(chalk.red('??? Fatal error:'), error instanceof Error ? error.message : String(error));
+      console.error(chalk.red('   - Fatal error:'), error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
   }
@@ -341,7 +341,7 @@ class ConverterCLI {
       
       const inputPath = path.resolve(input);
       if (!await fs.pathExists(inputPath)) {
-        console.error(chalk.red('??? Error:'), `Input file not found: ${inputPath}`);
+        console.error(chalk.red('   - Error:'), `Input file not found: ${inputPath}`);
         process.exit(1);
       }
 
@@ -352,20 +352,20 @@ class ConverterCLI {
 
       if (validation.isValid) {
         spinner.succeed('Markdown validation passed');
-        console.log(chalk.green('??? Valid:'), 'Markdown file is ready for conversion');
+        console.log(chalk.green('   - Valid:'), 'Markdown file is ready for conversion');
       } else {
         spinner.warn('Markdown validation completed with warnings');
-        console.log(chalk.yellow('??? Warnings:'));
-        validation.warnings.forEach(warning => console.log(`  ??? ${warning}`));
+        console.log(chalk.yellow('   - Warnings:'));
+        validation.warnings.forEach(warning => console.log(`     - ${warning}`));
       }
 
       if (validation.suggestions.length > 0) {
-        console.log(chalk.blue('???? Suggestions:'));
-        validation.suggestions.forEach(suggestion => console.log(`  ??? ${suggestion}`));
+        console.log(chalk.blue('    - Suggestions:'));
+        validation.suggestions.forEach(suggestion => console.log(`     - ${suggestion}`));
       }
 
     } catch (error) {
-      console.error(chalk.red('??? Fatal error:'), error instanceof Error ? error.message : String(error));
+      console.error(chalk.red('   - Fatal error:'), error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
   }
@@ -379,7 +379,7 @@ class ConverterCLI {
       
       const inputPath = path.resolve(input);
       if (!await fs.pathExists(inputPath)) {
-        console.error(chalk.red('??? Error:'), `Input file not found: ${inputPath}`);
+        console.error(chalk.red('   - Error:'), `Input file not found: ${inputPath}`);
         process.exit(1);
       }
 
@@ -388,7 +388,7 @@ class ConverterCLI {
       const stats = await this.converter.getConversionStats(inputPath);
       spinner.succeed('File analysis completed');
 
-      console.log(chalk.cyan('???? File Statistics:'));
+      console.log(chalk.cyan('    - File Statistics:'));
       console.log(`  File size: ${stats.fileSize}`);
       console.log(`  Word count: ${stats.wordCount.toLocaleString()}`);
       console.log(`  Reading time: ${stats.readingTime} minute(s)`);
@@ -397,7 +397,7 @@ class ConverterCLI {
       console.log(`  Links: ${stats.linkCount}`);
 
     } catch (error) {
-      console.error(chalk.red('??? Fatal error:'), error instanceof Error ? error.message : String(error));
+      console.error(chalk.red('   - Fatal error:'), error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
   }
@@ -406,16 +406,16 @@ class ConverterCLI {
    * Handle list command
    */
   private handleListCommand(): void {
-    console.log(chalk.cyan('???? Available Templates:'));
+    console.log(chalk.cyan('    - Available Templates:'));
     const templates = this.converter.getAvailableTemplates();
     templates.forEach(template => {
-      console.log(`  ??? ${template}`);
+      console.log(`     - ${template}`);
     });
 
-    console.log(chalk.cyan('\n???? Available Mermaid Themes:'));
+    console.log(chalk.cyan('\n    - Available Mermaid Themes:'));
     const themes = this.converter.getAvailableMermaidThemes();
     themes.forEach(theme => {
-      console.log(`  ??? ${theme}`);
+      console.log(`     - ${theme}`);
     });
   }
 

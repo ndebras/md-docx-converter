@@ -380,7 +380,23 @@ npm run test:coverage
 
 ---
 
-## 📚 **Dependencies**
+## � Known Bugs and Limitations
+
+These are the current known constraints of the converter. If you hit one of them, please open an issue with a minimal sample DOCX/Markdown.
+
+- DOCX → Markdown: Complex tables (heavy rowspans/colspans or nested tables) are approximated as GitHub-Flavored Markdown tables. A reflow heuristic may adjust layout when Mammoth produces one cell per row. Manual review is recommended for complex tables.
+- DOCX → Markdown fallback: In rare edge cases, Mammoth’s HTML conversion can fail. The converter will fall back to plain text extraction, which loses formatting, images, and links. Workarounds: re-save the DOCX in Word/LibreOffice, remove SmartArt/text boxes, or simplify the problematic section and retry.
+- Internal links and bookmarks: Word bookmarks aren’t always exported. We inject anchors for headings, but cross-references to arbitrary bookmarks may not resolve automatically. You may need to fix those links manually in the extracted Markdown.
+- Code blocks: Some pre/code regions can become multiple adjacent fenced blocks. Merge them manually if needed.
+- Images: Extracted image paths in Markdown use POSIX-style separators (/) for cross-platform compatibility. Some embedded/auto-generated Word drawings (SmartArt, shapes) may not be exported by Mammoth.
+- Unsupported DOCX features on extraction: tracked changes, comments, headers/footers content, footnotes/endnotes, text boxes, and floating shapes are not preserved and may be dropped or converted as plain text.
+- Markdown → DOCX image sizing: Mermaid diagrams are sized using intrinsic bitmap metadata. Very large diagrams may still be scaled by Word. If sizing looks off, adjust the Mermaid configuration or set a maximum width.
+
+We’re iterating on these—feedback and sample files help prioritize fixes.
+
+---
+
+## �📚 **Dependencies**
 
 This project is built on top of several excellent open-source libraries:
 
@@ -501,8 +517,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ##  Roadmap
 
 ### Version 1.0
-- TOFIX : 
-  - [ ] Conversion of docx to mark down is not working
+- Status:
+  - DOCX → Markdown extraction works; see “Known Bugs and Limitations” for remaining edge cases.
 
 ### Version 1.1 (Future)
 - [ ] Additional document templates
