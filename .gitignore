@@ -172,3 +172,8 @@ dist/converters/docx-to-markdown.js.map
 dist/converters/markdown-to-docx.js.map
 dist/processors/mermaid-png-processor.js.map
 dist/processors/mermaid-processor.js.map
+dist/cli/index.js.map
+dist/converters/docx-to-markdown.js.map
+dist/converters/markdown-to-docx.js.map
+dist/processors/mermaid-png-processor.js.map
+dist/processors/mermaid-processor.js.map
