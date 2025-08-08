@@ -3,6 +3,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import sharp from 'sharp';
+import { pathToFileURL } from 'url';
 
 /**
  * Nouveau processeur Mermaid avec g??n??ration PNG compl??te
@@ -30,36 +31,43 @@ export class MermaidPNGProcessor {
     let processedContent = content;
     let diagramCount = 0;
 
+    const diagrams: Array<{ block: string; code: string }> = [];
+    for (const block of mermaidBlocks) {
+      const diagramCode = block.replace(/```mermaid\s*\n/, '').replace(/\n```$/, '').trim();
+      if (diagramCode) {
+        if (this.containsUnsafeHTML(diagramCode)) {
+          throw new Error('Diagram contains potentially unsafe HTML');
+        }
+        diagrams.push({ block, code: diagramCode });
+      }
+    }
+
     // Initialiser Puppeteer
     await this.initBrowser();
 
-    for (const block of mermaidBlocks) {
+    for (const { block, code: diagramCode } of diagrams) {
       try {
-        const diagramCode = block.replace(/```mermaid\s*\n/, '').replace(/\n```$/, '').trim();
-        
-        if (diagramCode) {
-          const imageId = uuidv4();
-          const pngBuffer = await this.generateMermaidPNG(diagramCode, imageId);
-          
-          if (pngBuffer) {
-            const imagePath = path.join(this.tempDir, `${imageId}.png`);
-            fs.writeFileSync(imagePath, pngBuffer);
-            
-            images.push({
-              id: imageId,
-              path: imagePath,
-              buffer: pngBuffer
-            });
+        const imageId = uuidv4();
+        const pngBuffer = await this.generateMermaidPNG(diagramCode, imageId);
 
-            // Remplacer par une r??f??rence d'image
-            const imageRef = `![Mermaid Diagram ${imageId}](mermaid-${imageId}.png)`;
-            processedContent = processedContent.replace(block, imageRef);
-            diagramCount++;
-          }
+        if (pngBuffer) {
+          const imagePath = path.join(this.tempDir, `${imageId}.png`);
+          fs.writeFileSync(imagePath, pngBuffer);
+
+          images.push({
+            id: imageId,
+            path: imagePath,
+            buffer: pngBuffer
+          });
+
+          // Remplacer par une r??f??rence d'image
+          const imageRef = `![Mermaid Diagram ${imageId}](mermaid-${imageId}.png)`;
+          processedContent = processedContent.replace(block, imageRef);
+          diagramCount++;
         }
       } catch (error) {
         console.warn('Erreur lors du traitement du diagramme Mermaid:', error);
-        // Garder le bloc original en cas d'??chec
+        throw error;
       }
     }
 
@@ -70,6 +78,10 @@ export class MermaidPNGProcessor {
       diagramCount,
       images
     };
+  }
+
+  private containsUnsafeHTML(code: string): boolean {
+    return /<script[\s\S]*?>/i.test(code) || /on\w+\s*=|javascript:/i.test(code);
   }
 
   /**
@@ -85,11 +97,12 @@ export class MermaidPNGProcessor {
       await page.setViewport({ width: 1200, height: 800 });
 
       // HTML pour rendre le diagramme Mermaid
+      const mermaidUrl = pathToFileURL(path.resolve(__dirname, '../../vendor/mermaid.min.js')).href;
       const html = `
 <!DOCTYPE html>
 <html>
 <head>
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <script src="${mermaidUrl}"></script>
     <style>
         body {
             margin: 0;
@@ -110,7 +123,7 @@ ${diagramCode}
         mermaid.initialize({
             startOnLoad: true,
             theme: 'default',
-            securityLevel: 'loose',
+            securityLevel: 'strict',
             flowchart: {
                 htmlLabels: true,
                 curve: 'basis'
