@@ -257,7 +257,14 @@ export class MarkdownDocxConverter {
         const readingTime = Math.ceil(wordCount / 200); // 200 WPM
         const lineCount = content.split('\n').length;
         const imageCount = (content.match(/!\[.*?\]\(.*?\)/g) || []).length;
-        const linkCount = (content.match(/\[.*?\]\(.*?\)/g) || []).length;
+        // Count standard Markdown links [text](url) excluding images ![alt](src)
+        let linkCount = 0;
+        const linkRe = /\[[^\]]*\]\([^)]*\)/g;
+        for (const m of content.matchAll(linkRe) as any) {
+          const idx = m.index ?? 0;
+          const isImage = idx > 0 && content.charAt(idx - 1) === '!';
+          if (!isImage) linkCount += 1;
+        }
         
         return {
           wordCount,

@@ -17,16 +17,20 @@ Ce document vise à tester la conversion complète, y compris:
 
 ## Sommaire
 
-- [Introduction](#introduction)
-- [Listes et formats](#listes-et-formats)
-- [Tableau de données](#tableau-de-donnees)
-- [Code et citations](#code-et-citations)
-- [Graphiques Mermaid](#graphiques-mermaid)
-  - [Flowchart](#flowchart)
-  - [Sequence Diagram](#sequence-diagram)
-  - [Class Diagram](#class-diagram)
-  - [Gantt Diagram](#gantt-diagram)
-- [Conclusion](#conclusion)
+- [Document de test: Conversion Markdown → DOCX](#document-de-test-conversion-markdown--docx)
+  - [Sommaire](#sommaire)
+  - [Introduction](#introduction)
+    - [Niveaux de titres](#niveaux-de-titres)
+      - [Niveau 4](#niveau-4)
+  - [Listes et formats](#listes-et-formats)
+  - [Tableau de données](#tableau-de-données)
+  - [Code et citations](#code-et-citations)
+  - [Graphiques Mermaid](#graphiques-mermaid)
+    - [Flowchart](#flowchart)
+    - [Sequence Diagram](#sequence-diagram)
+    - [Class Diagram](#class-diagram)
+    - [Gantt Diagram](#gantt-diagram)
+  - [Conclusion](#conclusion)
 
 ---
 

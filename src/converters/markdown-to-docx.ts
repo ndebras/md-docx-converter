@@ -51,6 +51,17 @@ export class MarkdownToDocxConverter {
       this.logger.info('Starting Markdown to DOCX conversion');
       const startTime = Date.now();
 
+      // Guard: empty markdown should fail fast with a clear error
+      if (!markdownContent || markdownContent.trim().length === 0) {
+        return {
+          success: false,
+          error: {
+            code: 'EMPTY_INPUT',
+            message: 'Empty markdown content',
+          }
+        };
+      }
+
       // Process Mermaid diagrams first and get PNG images
       const mermaidResult = await this.mermaidProcessor.processContent(markdownContent);
       
