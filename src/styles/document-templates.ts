@@ -634,11 +634,11 @@ export class DocumentTemplates {
               size: 48, // 24pt
               font: 'Segoe UI Light',
               color: '0078D4',
-              bold: false,
+              bold: true,
             },
             paragraph: {
               spacing: {
-                before: 480,
+                before: 960,
                 after: 240,
               },
             },
@@ -652,7 +652,7 @@ export class DocumentTemplates {
             },
             paragraph: {
               spacing: {
-                before: 360,
+                before: 720,
                 after: 180,
               },
             },
@@ -671,10 +671,10 @@ export class DocumentTemplates {
       },
       pageSettings: {
         margins: {
-          top: 1440,
-          right: 1440,
-          bottom: 1440,
-          left: 1440,
+          top: 720,
+          right: 720,
+          bottom: 720,
+          left: 720,
         },
         orientation: 'portrait',
       },

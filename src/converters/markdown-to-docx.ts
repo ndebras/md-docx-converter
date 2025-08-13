@@ -587,6 +587,11 @@ export class MarkdownToDocxConverter {
           break;
         case 'html': {
           const raw = String(token.text || '').trim().toLowerCase();
+          // Standalone <br> should create a line break
+          if (raw === '<br>' || raw === '<br/>' || raw === '<br />') {
+            runs.push(new TextRun({ break: 1 } as any));
+            break;
+          }
           // Try to group <u>/<b>/<strong>/<i>/<em>/<s>/<del> blocks
           const tagToStyle: Record<string, any> = {
             '<u>': { underline: {} },
@@ -781,6 +786,15 @@ export class MarkdownToDocxConverter {
 
     let remaining = this.decodeHtmlEntities(text);
     while (remaining.length > 0) {
+      // Line break: <br>, <br/>, <br />
+      const br = remaining.match(/^(.*?)<br\s*\/?>\s*(.*)$/i);
+      if (br) {
+        if (br[1]) runs.push(new TextRun({ text: br[1], ...baseStyle }));
+        runs.push(new TextRun({ break: 1 } as any));
+        remaining = br[2];
+        continue;
+      }
+
       // Underline
       const u = remaining.match(/^(.*?)<u>(.*?)<\/u>(.*)$/s);
       if (u) {
