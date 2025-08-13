@@ -39,6 +39,9 @@ export class MarkdownToDocxConverter {
   private bookmarkCounter = 0;
   private headings: Array<{ level: number; text: string; anchor: string }> = [];
   private mermaidImages: Map<string, Buffer> = new Map();
+  // Track ordered list numbering references so each new list restarts at 1
+  private orderedListCounter = 0;
+  private usedOrderedListRefs: Set<string> = new Set();
 
   constructor() {
     this.mermaidProcessor = new MermaidPNGProcessor();
@@ -62,6 +65,10 @@ export class MarkdownToDocxConverter {
     try {
       this.logger.info('Starting Markdown to DOCX conversion');
       const startTime = Date.now();
+
+  // Reset per-conversion state
+  this.orderedListCounter = 0;
+  this.usedOrderedListRefs.clear();
 
       // Guard: empty markdown should fail fast with a clear error
       if (!markdownContent || markdownContent.trim().length === 0) {
@@ -329,10 +336,15 @@ export class MarkdownToDocxConverter {
     });
   }
 
-  private createList(token: any, level: number = 0): Paragraph[] {
+  private createList(token: any, level: number = 0, orderedRef?: string): Paragraph[] {
     const paragraphs: Paragraph[] = [];
 
-  token.items.forEach((item: any, index: number) => {
+    // Determine numbering reference for this list (ordered lists get a fresh reference per list)
+    const currentOrderedRef = token.ordered
+      ? (orderedRef || this.newOrderedListReference())
+      : undefined;
+
+    token.items.forEach((item: any, index: number) => {
       // Déterminer si c'est une tâche (checkbox) et choisir le préfixe
       // Detect GitHub task list markers
       let isTask = !!item.task || /^\s*\[(x|X| )\]/.test(item.raw || '');
@@ -381,7 +393,7 @@ export class MarkdownToDocxConverter {
       const paraOptions: any = { children: listChildren };
       if (!isTask) {
         paraOptions.numbering = {
-          reference: token.ordered ? 'md-numbered' : 'md-bullet',
+          reference: token.ordered ? (currentOrderedRef as string) : 'md-bullet',
           level: Math.max(0, Math.min(2, level)),
         };
       } else {
@@ -396,7 +408,8 @@ export class MarkdownToDocxConverter {
         item.tokens
           .filter((t: any) => t.type === 'list')
           .forEach((subList: any) => {
-            const subParas = this.createList(subList, level + 1);
+            // Nested ordered lists should restart at 1 → use a fresh reference per sublist
+            const subParas = this.createList(subList, level + 1, undefined);
             paragraphs.push(...subParas);
           });
       }
@@ -958,35 +971,37 @@ export class MarkdownToDocxConverter {
 
   private createDocument(elements: (Paragraph | Table)[], options: MarkdownToDocxOptions): Document {
     const template = DocumentTemplates.getTemplate(options.template || 'professional-report');
-    
+
+    // Build numbering config: include a bullet config and one ordered config per used reference
+    const orderedConfigs = Array.from(this.usedOrderedListRefs).map(ref => ({
+      reference: ref,
+      levels: [0,1,2].map(l => ({
+        level: l,
+        format: LevelFormat.DECIMAL,
+        text: `%${l+1}.`,
+        alignment: AlignmentType.LEFT,
+        style: { paragraph: { indent: { left: 720 * (l + 1), hanging: 360 } } }
+      }))
+    }));
+
+    const bulletConfig = {
+      reference: 'md-bullet',
+      levels: [0,1,2].map(l => ({
+        level: l,
+        format: LevelFormat.BULLET,
+        text: l === 0 ? '•' : l === 1 ? '◦' : '▪',
+        alignment: AlignmentType.LEFT,
+        style: { paragraph: { indent: { left: 720 * (l + 1), hanging: 360 } } }
+      }))
+    };
+
     return new Document({
       creator: options.author || 'Markdown-DOCX Converter',
       title: options.title || 'Converted Document',
       description: options.description || options.subject || '',
       styles: template.styles,
       numbering: {
-        config: [
-          {
-            reference: 'md-numbered',
-            levels: [0,1,2].map(l => ({
-              level: l,
-              format: LevelFormat.DECIMAL,
-              text: `%${l+1}.`,
-              alignment: AlignmentType.LEFT,
-              style: { paragraph: { indent: { left: 720 * (l + 1), hanging: 360 } } }
-            }))
-          },
-          {
-            reference: 'md-bullet',
-            levels: [0,1,2].map(l => ({
-              level: l,
-              format: LevelFormat.BULLET,
-              text: l === 0 ? '•' : l === 1 ? '◦' : '▪',
-              alignment: AlignmentType.LEFT,
-              style: { paragraph: { indent: { left: 720 * (l + 1), hanging: 360 } } }
-            }))
-          }
-        ]
+        config: [bulletConfig, ...orderedConfigs]
       },
       sections: [{
         properties: {
@@ -995,6 +1010,14 @@ export class MarkdownToDocxConverter {
         children: elements,
       }],
     });
+  }
+
+  /** Create a fresh numbering reference for a new ordered list and track it */
+  private newOrderedListReference(): string {
+    this.orderedListCounter += 1;
+    const ref = `md-numbered-${this.orderedListCounter}`;
+    this.usedOrderedListRefs.add(ref);
+    return ref;
   }
 
   private generateAnchor(text: string): string {
