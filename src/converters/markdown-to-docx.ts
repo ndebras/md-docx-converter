@@ -46,6 +46,15 @@ export class MarkdownToDocxConverter {
     this.logger = new Logger({ level: 'info' });
   }
 
+  /**
+   * Convert a Markdown string into a DOCX buffer using docx.
+   * Pipeline:
+   * 1) Strip front matter and merge metadata
+   * 2) Pre-process Mermaid (generate PNGs)
+   * 3) Normalize malformed nested links (e.g., [A]([B](URL)))
+   * 4) Lex markdown via marked and build a docx AST with processTokens
+   * 5) Optionally inject a TOC, then pack to a DOCX buffer
+   */
   async convert(
     markdownContent: string,
     options: MarkdownToDocxOptions = {}
@@ -193,6 +202,10 @@ export class MarkdownToDocxConverter {
     return { content: rest.replace(/^\s*\r?\n/, ''), meta };
   }
 
+  /**
+   * Walk the list of top-level marked tokens and convert each into
+   * a docx Paragraph/Table (or a list of paragraphs for lists).
+   */
   private async processTokens(tokens: any[]): Promise<(Paragraph | Table)[]> {
     const elements: (Paragraph | Table)[] = [];
 
@@ -210,6 +223,10 @@ export class MarkdownToDocxConverter {
     return elements;
   }
 
+  /**
+   * Convert a single marked token to docx structures. Inline content is
+   * delegated to processInlineTokens/WithStyle.
+   */
   private async processToken(token: any): Promise<Paragraph | Table | Paragraph[] | null> {
     switch (token.type) {
       case 'heading':
@@ -485,6 +502,10 @@ export class MarkdownToDocxConverter {
     });
   }
 
+  /**
+   * Basic HTML block handling. Mermaid blocks are handled upstream.
+   * For other HTML, we strip tags and keep text to avoid raw HTML leakage.
+   */
   private createHtml(token: any): Paragraph | null {
     // Handle Mermaid diagrams
     if (token.text.includes('mermaid')) {
