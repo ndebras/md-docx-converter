@@ -516,104 +516,135 @@ export class MarkdownToDocxConverter {
   private processInlineTokens(tokens: any[]): any[] {
     const runs: any[] = [];
 
-    tokens.forEach(token => {
+    // Use index-based loop to allow lookahead for HTML open/close tags
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
       switch (token.type) {
         case 'paragraph':
-          // Some parsers (marked) wrap inline content in a paragraph token inside lists
           if (Array.isArray(token.tokens)) {
             runs.push(...this.processInlineTokens(token.tokens));
           } else if (token.text) {
-            runs.push(new TextRun({ text: this.decodeHtmlEntities(token.text) }));
+            runs.push(...this.processTextWithInlineHtml(token.text));
           }
           break;
         case 'text':
-          // In marked, a text token can itself contain inline tokens (strong/em/link/codespan)
           if (Array.isArray((token as any).tokens) && (token as any).tokens.length > 0) {
             runs.push(...this.processInlineTokens((token as any).tokens));
           } else {
-            runs.push(new TextRun({ text: this.decodeHtmlEntities(token.text) }));
+            runs.push(...this.processTextWithInlineHtml(token.text));
           }
           break;
+        case 'html': {
+          const raw = String(token.text || '').trim().toLowerCase();
+          // Try to group <u>/<b>/<strong>/<i>/<em>/<s>/<del> blocks
+          const tagToStyle: Record<string, any> = {
+            '<u>': { underline: {} },
+            '<b>': { bold: true },
+            '<strong>': { bold: true },
+            '<i>': { italics: true },
+            '<em>': { italics: true },
+            '<s>': { strike: true },
+            '<del>': { strike: true },
+          };
+          const closeFor: Record<string, string> = {
+            '<u>': '</u>',
+            '<b>': '</b>',
+            '<strong>': '</strong>',
+            '<i>': '</i>',
+            '<em>': '</em>',
+            '<s>': '</s>',
+            '<del>': '</del>',
+          };
+          if (raw in tagToStyle) {
+            const closeTag = closeFor[raw];
+            // Find matching closing tag ahead
+            let j = i + 1;
+            while (j < tokens.length) {
+              const t = tokens[j];
+              if (t.type === 'html' && String(t.text || '').trim().toLowerCase() === closeTag) break;
+              j++;
+            }
+            if (j < tokens.length) {
+              // Process inner tokens with style
+              const inner = tokens.slice(i + 1, j);
+              runs.push(...this.processInlineTokensWithStyle(inner, tagToStyle[raw]));
+              i = j; // skip to closing
+              break;
+            }
+            // If no closing found, ignore the tag (don’t render raw)
+            break;
+          }
+          // If html token contains inline HTML with content (e.g., <u>text</u>)
+          if (/[<>].*[<>]/.test(raw)) {
+            runs.push(...this.processTextWithInlineHtml(token.text));
+          }
+          // Otherwise ignore standalone raw HTML
+          break;
+        }
         case 'strong':
-          // Pour strong, traiter les tokens enfants avec bold=true
           if (token.tokens && token.tokens.length > 0) {
-            const childRuns = this.processInlineTokensWithStyle(token.tokens, { bold: true });
-            runs.push(...childRuns);
+            runs.push(...this.processInlineTokensWithStyle(token.tokens, { bold: true }));
           } else {
-            runs.push(new TextRun({ 
-              text: this.decodeHtmlEntities(token.text),
-              bold: true 
-            }));
+            runs.push(...this.processTextWithInlineHtml(token.text, { bold: true }));
           }
           break;
         case 'em':
-          // Pour em, traiter les tokens enfants avec italics=true
           if (token.tokens && token.tokens.length > 0) {
-            const childRuns = this.processInlineTokensWithStyle(token.tokens, { italics: true });
-            runs.push(...childRuns);
+            runs.push(...this.processInlineTokensWithStyle(token.tokens, { italics: true }));
           } else {
-            runs.push(new TextRun({ 
-              text: this.decodeHtmlEntities(token.text),
-              italics: true 
-            }));
+            runs.push(...this.processTextWithInlineHtml(token.text, { italics: true }));
           }
           break;
-  case 'codespan':
-  case 'code':
-          runs.push(new TextRun({ 
-            text: this.decodeHtmlEntities(token.text),
-            font: 'Courier New'
-          }));
+        case 'del':
+        case 's':
+          if (token.tokens && token.tokens.length > 0) {
+            runs.push(...this.processInlineTokensWithStyle(token.tokens, { strike: true }));
+          } else {
+            runs.push(...this.processTextWithInlineHtml(token.text, { strike: true }));
+          }
           break;
-        case 'link':
-          if (typeof token.href === 'string' && token.href.startsWith('http')) {
+        case 'codespan':
+        case 'code':
+          runs.push(new TextRun({ text: this.decodeHtmlEntities(token.text), font: 'Courier New' }));
+          break;
+        case 'link': {
+          const rawHref = typeof token.href === 'string' ? token.href.trim() : '';
+          let finalHref = rawHref;
+          let finalText = this.decodeHtmlEntities(token.text || '');
+          const nested = rawHref.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+          if (nested) {
+            // Keep the outer link text, but use the inner URL
+            finalHref = nested[2].trim();
+          }
+          const isExternal = /^(https?:\/\/|mailto:|ftp:\/\/)/i.test(finalHref);
+          if (isExternal) {
             runs.push(new ExternalHyperlink({
-              link: token.href,
-              children: [
-                new TextRun({
-                  text: this.decodeHtmlEntities(token.text),
-                  style: 'Hyperlink',
-                })
-              ]
+              link: finalHref,
+              children: [new TextRun({ text: finalText, style: 'Hyperlink' })],
             }));
           } else {
-            // Internal link (anchor or section reference)
-            const anchorText = typeof token.href === 'string' ? token.href.replace(/^#/, '') : '';
+            const anchorText = finalHref.replace(/^#/, '');
             const anchor = this.sanitizeBookmarkName(anchorText);
             runs.push(new InternalHyperlink({
               anchor,
-              children: [
-                new TextRun({
-                  text: this.decodeHtmlEntities(token.text),
-                  color: '0000FF',
-                  underline: {},
-                })
-              ]
+              children: [new TextRun({ text: finalText, color: '0000FF', underline: {} })],
             }));
           }
           break;
+        }
         case 'image':
-          // Handle image tokens - convert to placeholder text for now
           if (token.href && token.href.startsWith('data:image/')) {
-            runs.push(new TextRun({
-              text: `[${token.alt || 'Image'}]`,
-              italics: true,
-              color: '666666'
-            }));
+            runs.push(new TextRun({ text: `[${token.alt || 'Image'}]`, italics: true, color: '666666' }));
           } else {
-            runs.push(new TextRun({
-              text: `[Image: ${token.alt || token.href}]`,
-              italics: true,
-              color: '666666'
-            }));
+            runs.push(new TextRun({ text: `[Image: ${token.alt || token.href}]`, italics: true, color: '666666' }));
           }
           break;
         default:
           if (token.text) {
-            runs.push(new TextRun({ text: token.text }));
+            runs.push(...this.processTextWithInlineHtml(token.text));
           }
       }
-    });
+    }
 
     return runs;
   }
@@ -627,62 +658,118 @@ export class MarkdownToDocxConverter {
           if (Array.isArray(token.tokens)) {
             runs.push(...this.processInlineTokensWithStyle(token.tokens, { ...baseStyle }));
           } else if (token.text) {
-            runs.push(new TextRun({ text: token.text, ...baseStyle }));
+            runs.push(...this.processTextWithInlineHtml(token.text, baseStyle));
           }
           break;
         case 'text':
           if (Array.isArray((token as any).tokens) && (token as any).tokens.length > 0) {
             runs.push(...this.processInlineTokensWithStyle((token as any).tokens, { ...baseStyle }));
           } else {
-            runs.push(new TextRun({ 
-              text: token.text,
-              ...baseStyle
-            }));
+            runs.push(...this.processTextWithInlineHtml(token.text, baseStyle));
           }
           break;
         case 'strong':
-          // Combiner bold avec le style de base
           if (token.tokens && token.tokens.length > 0) {
-            const childRuns = this.processInlineTokensWithStyle(token.tokens, { ...baseStyle, bold: true });
-            runs.push(...childRuns);
+            runs.push(...this.processInlineTokensWithStyle(token.tokens, { ...baseStyle, bold: true }));
           } else {
-            runs.push(new TextRun({ 
-              text: token.text,
-              ...baseStyle,
-              bold: true 
-            }));
+            runs.push(...this.processTextWithInlineHtml(token.text, { ...baseStyle, bold: true }));
           }
           break;
         case 'em':
-          // Combiner italics avec le style de base
           if (token.tokens && token.tokens.length > 0) {
-            const childRuns = this.processInlineTokensWithStyle(token.tokens, { ...baseStyle, italics: true });
-            runs.push(...childRuns);
+            runs.push(...this.processInlineTokensWithStyle(token.tokens, { ...baseStyle, italics: true }));
           } else {
-            runs.push(new TextRun({ 
-              text: token.text,
-              ...baseStyle,
-              italics: true 
+            runs.push(...this.processTextWithInlineHtml(token.text, { ...baseStyle, italics: true }));
+          }
+          break;
+        case 'codespan':
+        case 'code':
+          runs.push(new TextRun({ text: this.decodeHtmlEntities(token.text), ...baseStyle, font: 'Courier New' }));
+          break;
+        case 'link': {
+          const rawHref = typeof token.href === 'string' ? token.href.trim() : '';
+          let finalHref = rawHref;
+          let finalText = this.decodeHtmlEntities(token.text || '');
+          const nested = rawHref.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+          if (nested) {
+            finalText = this.decodeHtmlEntities(nested[1]);
+            finalHref = nested[2].trim();
+          }
+          const isExternal = /^(https?:\/\/|mailto:|ftp:\/\/)/i.test(finalHref);
+          if (isExternal) {
+            runs.push(new ExternalHyperlink({
+              link: finalHref,
+              children: [new TextRun({ text: finalText, style: 'Hyperlink', ...baseStyle })],
+            }));
+          } else {
+            const anchorText = finalHref.replace(/^#/, '');
+            const anchor = this.sanitizeBookmarkName(anchorText);
+            runs.push(new InternalHyperlink({
+              anchor,
+              children: [new TextRun({ text: finalText, color: '0000FF', underline: {}, ...baseStyle })],
             }));
           }
           break;
-  case 'codespan':
-  case 'code':
-          runs.push(new TextRun({ 
-            text: token.text,
-            ...baseStyle,
-            font: 'Courier New'
-          }));
-          break;
-    default:
+        }
+        default:
           if (token.text) {
-      runs.push(new TextRun({ 
-              text: token.text,
-              ...baseStyle
-            }));
+            runs.push(...this.processTextWithInlineHtml(token.text, baseStyle));
           }
       }
     });
+
+    return runs;
+  }
+
+  // Parse inline HTML like <u>, <b>/<strong>, <i>/<em>, <s>/<del> and map to TextRun styles
+  private processTextWithInlineHtml(text: string, baseStyle: any = {}): TextRun[] {
+    const runs: TextRun[] = [];
+    if (!text || typeof text !== 'string') {
+      return [new TextRun({ text: '', ...baseStyle })];
+    }
+
+    let remaining = this.decodeHtmlEntities(text);
+    while (remaining.length > 0) {
+      // Underline
+      const u = remaining.match(/^(.*?)<u>(.*?)<\/u>(.*)$/s);
+      if (u) {
+        if (u[1]) runs.push(new TextRun({ text: u[1], ...baseStyle }));
+        if (u[2]) runs.push(new TextRun({ text: u[2], ...baseStyle, underline: {} }));
+        remaining = u[3];
+        continue;
+      }
+
+      // Bold
+      const b = remaining.match(/^(.*?)<(?:b|strong)>(.*?)<\/(?:b|strong)>(.*)$/s);
+      if (b) {
+        if (b[1]) runs.push(new TextRun({ text: b[1], ...baseStyle }));
+        if (b[2]) runs.push(new TextRun({ text: b[2], ...baseStyle, bold: true }));
+        remaining = b[3];
+        continue;
+      }
+
+      // Italic
+      const i = remaining.match(/^(.*?)<(?:i|em)>(.*?)<\/(?:i|em)>(.*)$/s);
+      if (i) {
+        if (i[1]) runs.push(new TextRun({ text: i[1], ...baseStyle }));
+        if (i[2]) runs.push(new TextRun({ text: i[2], ...baseStyle, italics: true }));
+        remaining = i[3];
+        continue;
+      }
+
+      // Strikethrough
+      const s = remaining.match(/^(.*?)<(?:s|del)>(.*?)<\/(?:s|del)>(.*)$/s);
+      if (s) {
+        if (s[1]) runs.push(new TextRun({ text: s[1], ...baseStyle }));
+        if (s[2]) runs.push(new TextRun({ text: s[2], ...baseStyle, strike: true }));
+        remaining = s[3];
+        continue;
+      }
+
+      // No more tags
+      runs.push(new TextRun({ text: remaining, ...baseStyle }));
+      break;
+    }
 
     return runs;
   }

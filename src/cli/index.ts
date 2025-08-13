@@ -68,8 +68,6 @@ class ConverterCLI {
       .option('--image-dir <dir>', 'Directory for extracted images', 'images')
       .option('--image-format <format>', 'Image format (png|jpg|svg)', 'png')
       .option('--preserve-formatting', 'Preserve original formatting')
-  .option('--detailed-warnings', 'Show detailed formatting warnings')
-  .option('--heading-anchors <mode>', 'Add anchors to headings (html|pandoc|none)', 'none')
       .option('--verbose', 'Verbose output')
       .action(async (input, options) => {
         await this.handleExtractCommand(input, options);
@@ -224,8 +222,6 @@ class ConverterCLI {
         imageOutputDir: options.imageDir,
         imageFormat: options.imageFormat,
         preserveFormatting: options.preserveFormatting,
-  detailedWarnings: options.verbose || options.detailedWarnings,
-  headingAnchors: options.headingAnchors,
       };
 
       // Perform conversion
