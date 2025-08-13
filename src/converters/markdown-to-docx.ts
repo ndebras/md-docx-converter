@@ -85,13 +85,16 @@ export class MarkdownToDocxConverter {
         this.mermaidImages.set(image.id, image.buffer);
       });
 
-      // Parse markdown
-  const tokens = marked.lexer(mermaidResult.content);
+  // Normalize malformed nested links like [A]([B](URL)) -> [A](URL)
+  const normalizedContent = this.normalizeNestedLinks(mermaidResult.content);
+      
+  // Parse markdown
+  const tokens = marked.lexer(normalizedContent);
       
       // Process links
       const linkResult = options.preserveLinks 
-        ? this.linkProcessor.processContent(mermaidResult.content)
-        : { content: mermaidResult.content, links: [], headings: [] };
+        ? this.linkProcessor.processContent(normalizedContent)
+        : { content: normalizedContent, links: [], headings: [] };
 
       // Extract headings for TOC
       this.headings = this.extractHeadings(tokens);
@@ -511,6 +514,20 @@ export class MarkdownToDocxConverter {
         after: 200,
       },
     });
+  }
+
+  // Fix malformed nested links like [Text]([InnerText](URL)) -> [Text](URL)
+  private normalizeNestedLinks(md: string): string {
+    if (!md) return md;
+    // Repeat replacement a few times to catch multiple occurrences
+    let out = md;
+    const pattern = /\[([^\]]+)\]\(\s*\[([^\]]+)\]\(([^)]+)\)\s*\)/g; // [A]([B](URL))
+    for (let i = 0; i < 5; i++) {
+      const before = out;
+      out = out.replace(pattern, '[$1]($3)');
+      if (out === before) break;
+    }
+    return out;
   }
 
   private processInlineTokens(tokens: any[]): any[] {
