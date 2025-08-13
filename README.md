@@ -81,7 +81,7 @@ Main commands:
 
 Common options:
 - -o, --output <file>
-- -t, --template <name> (default: professional-report)
+- -t, --template <name> (default: modern)
 - -m, --mermaid-theme <theme> (default: default)
 - --title <text> --author <text> --subject <text>
 - --toc (table of contents)
@@ -93,7 +93,7 @@ Examples (PowerShell):
 
 ```powershell
 # Convert Markdown → DOCX with TOC (Make sure that an output folder exists or adapt the -o parameter)
-node dist/cli/index.js convert .\demo-complete.md -o .\output\demo-complete.docx --template professional-report --toc
+node dist/cli/index.js convert .\demo-complete.md -o .\output\demo-complete.docx --template modern --toc
 
 # Global CLI (if installed with -g)
 md-docx convert .\sample.md -o .\output\sample.docx --toc --title "Demo" --author "Team"
@@ -152,7 +152,7 @@ if (markdownResult.success) {
 
 ```bash
 # Convert Markdown to DOCX
-md-docx convert input.md -o output.docx --template professional-report --toc
+md-docx convert input.md -o output.docx --template modern --toc
 
 # Extract DOCX to Markdown
 md-docx extract document.docx -o output.md --extract-images --image-dir images

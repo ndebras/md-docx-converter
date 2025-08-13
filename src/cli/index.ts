@@ -45,7 +45,7 @@ class ConverterCLI {
       .description('Convert Markdown file to DOCX')
       .argument('<input>', 'Input Markdown file')
       .option('-o, --output <file>', 'Output DOCX file')
-      .option('-t, --template <template>', 'Document template', 'professional-report')
+  .option('-t, --template <template>', 'Document template', 'modern')
       .option('-m, --mermaid-theme <theme>', 'Mermaid diagram theme', 'default')
       .option('--title <title>', 'Document title')
       .option('--author <author>', 'Document author')
@@ -80,7 +80,7 @@ class ConverterCLI {
       .argument('<input-dir>', 'Input directory')
       .option('-o, --output-dir <dir>', 'Output directory', './output')
       .option('-f, --format <format>', 'Target format (docx|markdown)', 'docx')
-      .option('-t, --template <template>', 'Document template (for DOCX)', 'professional-report')
+  .option('-t, --template <template>', 'Document template (for DOCX)', 'modern')
       .option('-m, --mermaid-theme <theme>', 'Mermaid theme (for DOCX)', 'default')
       .option('--toc', 'Generate table of contents (for DOCX)')
       .option('--extract-images', 'Extract images (for Markdown)')
@@ -450,8 +450,8 @@ class ConverterCLI {
       return template as DocumentTemplate;
     }
     
-    console.warn(chalk.yellow(`Invalid template '${template}', using 'professional-report'`));
-    return 'professional-report';
+  console.warn(chalk.yellow(`Invalid template '${template}', using 'modern'`));
+  return 'modern';
   }
 
   /**
