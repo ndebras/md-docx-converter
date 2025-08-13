@@ -18,11 +18,34 @@ import {
 import { DocumentTemplate, CustomStyles, PageMargins } from '../types';
 
 /**
- * Professional document templates for DOCX generation
+ * Provides a set of ready-to-use document templates for DOCX generation.
+ *
+ * Each template returns a DocumentTemplateConfig describing:
+ * - base styles (fonts, sizes, spacing, hyperlink style)
+ * - heading styles
+ * - optional paragraph/code/table presets
+ * - page settings (margins, orientation)
+ * - optional section headers/footers (e.g., page numbers)
+ *
+ * Usage example:
+ * const cfg = DocumentTemplates.getTemplate('professional-report');
+ * // Pass cfg to the converter to style the generated document.
  */
 export class DocumentTemplates {
   /**
-   * Get template configuration
+   * Returns a template configuration by name.
+   *
+   * Supported template names:
+   * - 'professional-report'
+   * - 'technical-documentation'
+   * - 'business-proposal'
+   * - 'academic-paper'
+   * - 'modern'
+   * - 'classic'
+   * - 'simple' (default fallback)
+   *
+   * @param templateName The desired template identifier.
+   * @returns A DocumentTemplateConfig with styles and page/section settings.
    */
   static getTemplate(templateName: DocumentTemplate): DocumentTemplateConfig {
     switch (templateName) {
@@ -45,7 +68,11 @@ export class DocumentTemplates {
   }
 
   /**
-   * Professional report template
+   * Professional report template.
+   *
+   * Clean sans-serif typography, justified paragraphs, blue accent headings,
+   * subtle code block styling with a left border, and page header/footer with
+   * centered page numbers. Good default for business/consulting reports.
    */
   private static createProfessionalReportTemplate(): DocumentTemplateConfig {
     return {
@@ -254,7 +281,10 @@ export class DocumentTemplates {
   }
 
   /**
-   * Technical documentation template
+   * Technical documentation template.
+   *
+   * Friendly monospace code style, numbered headings, tighter spacing,
+   * and subtle table accents suited for developer docs and handbooks.
    */
   private static createTechnicalDocumentationTemplate(): DocumentTemplateConfig {
     return {
@@ -395,7 +425,10 @@ export class DocumentTemplates {
   }
 
   /**
-   * Business proposal template
+   * Business proposal template.
+   *
+   * Serif typography with generous spacing and strong colored accents
+   * for headings and tables, centered title style for H1.
    */
   private static createBusinessProposalTemplate(): DocumentTemplateConfig {
     return {
@@ -482,7 +515,10 @@ export class DocumentTemplates {
   }
 
   /**
-   * Academic paper template
+   * Academic paper template.
+   *
+   * Times New Roman, double-spaced paragraphs, classic black accents,
+   * centered H1 – aligned with common academic formatting expectations.
    */
   private static createAcademicPaperTemplate(): DocumentTemplateConfig {
     return {
@@ -569,7 +605,10 @@ export class DocumentTemplates {
   }
 
   /**
-   * Modern template
+   * Modern template.
+   *
+   * Contemporary Segoe UI look, large/light H1, minimal borders,
+   * and subtle color accents.
    */
   private static createModernTemplate(): DocumentTemplateConfig {
     return {
@@ -655,7 +694,10 @@ export class DocumentTemplates {
   }
 
   /**
-   * Classic template
+   * Classic template.
+   *
+   * Traditional serif style with centered H1 and double borders on tables
+   * for a formal, timeless appearance.
    */
   private static createClassicTemplate(): DocumentTemplateConfig {
     return {
@@ -742,7 +784,10 @@ export class DocumentTemplates {
   }
 
   /**
-   * Simple template
+   * Simple template.
+   *
+   * Minimal, neutral defaults with Arial, single-column layout,
+   * and plain black borders – suitable as a starting point.
    */
   private static createSimpleTemplate(): DocumentTemplateConfig {
     return {
@@ -832,26 +877,51 @@ export class DocumentTemplates {
  * Document template configuration interface
  */
 export interface DocumentTemplateConfig {
+  /**
+   * Visual style presets applied across the document.
+   * These map to docx style constructs and are consumed by the converter.
+   */
   styles: {
+    /**
+     * Base document defaults (run and paragraph). Font sizes are in half-points
+     * (e.g., 24 = 12pt). Spacing uses twentieths of a point as per docx.
+     */
     default: any;
+    /**
+     * Heading styles keyed by logical names (heading1, heading2, ...).
+     */
     headings: Record<string, any>;
+    /** Optional paragraph preset used for normal paragraphs. */
     paragraph?: any;
+    /** Optional code block preset with monospace font and background/borders. */
     codeBlock?: any;
+    /** Optional table defaults (borders, width, etc.). */
     table?: any;
+    /** Optional hyperlink run style (color, underline). */
     hyperlink?: any;
   };
+  /** Page margins and orientation to apply to sections by default. */
   pageSettings: {
     margins: {
+      /** Top margin in twips (1440 = 1 inch). */
       top: number;
+      /** Right margin in twips (1440 = 1 inch). */
       right: number;
+      /** Bottom margin in twips (1440 = 1 inch). */
       bottom: number;
+      /** Left margin in twips (1440 = 1 inch). */
       left: number;
     };
+    /** Page orientation. */
     orientation: 'portrait' | 'landscape';
   };
+  /** Section-level properties, and optional headers/footers used by docx. */
   sections: {
+    /** Raw docx section properties (page, margin, etc.). */
     properties: any;
+    /** Optional section headers (e.g., default header with title). */
     headers?: any;
+    /** Optional section footers (e.g., page X of Y). */
     footers?: any;
   };
 }

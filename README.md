@@ -184,6 +184,45 @@ md-docx list
 | `classic` | Traditional book-style formatting | Traditional documents, literature |
 | `simple` | Clean, minimal formatting | General purpose, simple documents |
 
+### Document Templates: Selection and Customization
+
+Use a built-in template via CLI or programmatically, and optionally override parts with custom styles:
+
+- CLI (PowerShell):
+
+```powershell
+# Choose a template
+md-docx convert .\input.md -o .\output.docx --template technical-documentation --toc
+
+# List available templates and Mermaid themes
+md-docx list
+```
+
+- Programmatic:
+
+```ts
+import { MarkdownDocxConverter } from 'markdown-docx-converter';
+
+const converter = new MarkdownDocxConverter({ template: 'professional-report' });
+
+await converter.markdownToDocx(content, {
+  orientation: 'portrait',
+  margins: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
+  // Optional fine-tuning
+  customStyles: {
+    headings: { h1: { fontSize: 32, color: '2F5597', bold: true } },
+    paragraph: { fontSize: 24, alignment: 'justify' },
+    link: { color: '#0563C1', underline: true }
+  }
+});
+```
+
+Supported template names: `professional-report`, `technical-documentation`, `business-proposal`, `academic-paper`, `modern`, `classic`, `simple`.
+
+Notes:
+- Font sizes are specified in half-points (24 = 12pt). Margins are twips (1440 = 1 inch).
+- Templates define defaults for headings, paragraphs, code blocks, tables, and hyperlinks; `customStyles` lets you adjust specific parts.
+
 ### Mermaid Diagram Support
 
 The converter supports all Mermaid diagram types:
@@ -261,6 +300,11 @@ await converter.markdownToDocx(content, {
   }
 });
 ```
+
+### Link handling notes
+
+- Malformed nested links like `[A]([B](https://example.com))` are normalized to `[A](https://example.com)` during conversion.
+- Inline HTML formatting inside Markdown text such as `<u>underline</u>`, `<strong>bold</strong>`, `<em>italic</em>`, and `<s>strike</s>/<del>deleted</del>` is mapped to Word text styles; literal HTML tags won’t appear in the DOCX output.
 
 ### Error Handling
 
