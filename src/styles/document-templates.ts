@@ -638,7 +638,7 @@ export class DocumentTemplates {
             },
             paragraph: {
               spacing: {
-                before: 960,
+                before: 1200, // 960 + 240 (une ligne supplémentaire)
                 after: 240,
               },
             },
@@ -652,8 +652,64 @@ export class DocumentTemplates {
             },
             paragraph: {
               spacing: {
-                before: 720,
+                before: 960, // 720 + 240 (une ligne supplémentaire)
                 after: 180,
+              },
+            },
+          },
+          heading3: {
+            run: {
+              size: 28, // 14pt
+              font: 'Segoe UI',
+              color: '323130',
+              bold: true,
+            },
+            paragraph: {
+              spacing: {
+                before: 360,
+                after: 120,
+              },
+            },
+          },
+          heading4: {
+            run: {
+              size: 24, // 12pt
+              font: 'Segoe UI',
+              color: '605E5C',
+              bold: true,
+            },
+            paragraph: {
+              spacing: {
+                before: 240,
+                after: 120,
+              },
+            },
+          },
+          heading5: {
+            run: {
+              size: 22, // 11pt
+              font: 'Segoe UI',
+              color: '605E5C',
+              bold: true,
+            },
+            paragraph: {
+              spacing: {
+                before: 180,
+                after: 60,
+              },
+            },
+          },
+          heading6: {
+            run: {
+              size: 20, // 10pt
+              font: 'Segoe UI',
+              color: '605E5C',
+              bold: true,
+            },
+            paragraph: {
+              spacing: {
+                before: 120,
+                after: 60,
               },
             },
           },
@@ -668,13 +724,63 @@ export class DocumentTemplates {
             insideVertical: { style: BorderStyle.NONE },
           },
         },
+        paragraph: {
+          normal: {
+            run: {
+              size: 22,
+              font: 'Segoe UI',
+            },
+            paragraph: {
+              spacing: {
+                after: 120,
+              },
+              alignment: AlignmentType.LEFT,
+            },
+          },
+        },
+        codeBlock: {
+          run: {
+            size: 20, // 10pt
+            font: 'Consolas',
+            color: '323130',
+          },
+          paragraph: {
+            shading: {
+              fill: 'F3F2F1',
+            },
+            border: {
+              left: {
+                color: '0078D4',
+                space: 1,
+                style: BorderStyle.SINGLE,
+                size: 4,
+              },
+            },
+            indent: {
+              left: 360,
+            },
+            spacing: {
+              before: 120,
+              after: 120,
+            },
+          },
+        },
+        hyperlink: {
+          run: {
+            color: '0078D4',
+            underline: {
+              type: UnderlineType.SINGLE,
+              color: '0078D4',
+            },
+          },
+        },
       },
       pageSettings: {
         margins: {
-          top: 720,
-          right: 720,
-          bottom: 720,
-          left: 720,
+          top: 360,
+          right: 360,
+          bottom: 360,
+          left: 360,
         },
         orientation: 'portrait',
       },
@@ -682,10 +788,10 @@ export class DocumentTemplates {
         properties: {
           page: {
             margin: {
-              top: 1440,
-              right: 1440,
-              bottom: 1440,
-              left: 1440,
+              top: 360,
+              right: 360,
+              bottom: 360,
+              left: 360,
             },
           },
         },

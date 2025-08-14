@@ -42,6 +42,7 @@ export class MarkdownToDocxConverter {
   // Track ordered list numbering references so each new list restarts at 1
   private orderedListCounter = 0;
   private usedOrderedListRefs: Set<string> = new Set();
+  private template: any; // Store the current template
 
   constructor() {
     this.mermaidProcessor = new MermaidPNGProcessor();
@@ -114,6 +115,9 @@ export class MarkdownToDocxConverter {
 
       // Extract headings for TOC
       this.headings = this.extractHeadings(tokens);
+
+      // Get template and store it for use in element creation methods
+      this.template = DocumentTemplates.getTemplate(effOptions.template || 'professional-report');
 
       // Convert to DOCX
       const elements = await this.processTokens(tokens);
@@ -263,21 +267,30 @@ export class MarkdownToDocxConverter {
   }
 
   private createHeading(token: any): Paragraph {
-  const anchor = this.sanitizeBookmarkName(this.generateAnchor(token.text));
-  this.bookmarkCounter += 1;
+    const anchor = this.sanitizeBookmarkName(this.generateAnchor(token.text));
+    this.bookmarkCounter += 1;
     const headingText = this.decodeHtmlEntities(token.text);
+    
+    // Get the appropriate heading style from template
+    const headingStyleKey = `heading${token.depth}`;
+    const headingStyle = this.template?.styles?.headings?.[headingStyleKey];
 
     return new Paragraph({
       heading: this.getHeadingLevel(token.depth),
       children: [
-    // Use anchor as bookmark name so InternalHyperlink can target it
-    new BookmarkStart(anchor, this.bookmarkCounter),
+        // Use anchor as bookmark name so InternalHyperlink can target it
+        new BookmarkStart(anchor, this.bookmarkCounter),
         new TextRun({
           text: headingText,
-          bold: true,
+          bold: headingStyle?.run?.bold !== undefined ? headingStyle.run.bold : true,
+          size: headingStyle?.run?.size || 24,
+          color: headingStyle?.run?.color || '000000',
+          font: headingStyle?.run?.font || 'Calibri',
         }),
         new BookmarkEnd(this.bookmarkCounter),
       ],
+      spacing: headingStyle?.paragraph?.spacing,
+      border: headingStyle?.paragraph?.border,
     });
   }
 
@@ -286,8 +299,14 @@ export class MarkdownToDocxConverter {
     if (token.tokens && token.tokens.length === 1 && token.tokens[0].type === 'image') {
       return await this.createImageParagraph(token.tokens[0]);
     }
+    
+    // Get paragraph style from template
+    const defaultDoc = this.template?.styles?.default?.document;
+    
     return new Paragraph({
       children: this.processInlineTokens(token.tokens || [{ type: 'text', text: token.text }]),
+      spacing: defaultDoc?.paragraph?.spacing,
+      alignment: defaultDoc?.paragraph?.alignment,
     });
   }
 
@@ -386,7 +405,8 @@ export class MarkdownToDocxConverter {
 
       const listChildren: any[] = [];
       if (isTask) {
-        listChildren.push(new TextRun({ text: `${checkbox} ` }));
+        const defaultStyle = this.getDefaultTextStyle();
+        listChildren.push(new TextRun({ text: `${checkbox} `, ...defaultStyle }));
       }
       listChildren.push(...formattedRuns);
 
@@ -492,7 +512,8 @@ export class MarkdownToDocxConverter {
         return this.parseSimpleMarkdown(cell.text, baseStyle);
       }
       // Fallback: convertir en chaîne proprement
-      return [new TextRun({ text: String(cell ?? ''), ...baseStyle })];
+      const defaultStyle = this.getDefaultTextStyle();
+      return [new TextRun({ text: String(cell ?? ''), ...defaultStyle, ...baseStyle })];
     };
 
     const headerCells = token.header.map((cell: any) => new TableCell({
@@ -534,8 +555,9 @@ export class MarkdownToDocxConverter {
   }
 
   private createHorizontalRule(): Paragraph {
+    const defaultStyle = this.getDefaultTextStyle();
     return new Paragraph({
-      children: [new TextRun({ text: '' })],
+      children: [new TextRun({ text: '', ...defaultStyle })],
       border: {
         bottom: {
           color: 'CCCCCC',
@@ -566,6 +588,7 @@ export class MarkdownToDocxConverter {
 
   private processInlineTokens(tokens: any[]): any[] {
     const runs: any[] = [];
+    const defaultStyle = this.getDefaultTextStyle();
 
     // Use index-based loop to allow lookahead for HTML open/close tags
     for (let i = 0; i < tokens.length; i++) {
@@ -661,7 +684,7 @@ export class MarkdownToDocxConverter {
           break;
         case 'codespan':
         case 'code':
-          runs.push(new TextRun({ text: this.decodeHtmlEntities(token.text), font: 'Courier New' }));
+          runs.push(new TextRun({ text: this.decodeHtmlEntities(token.text), ...defaultStyle, font: 'Courier New' }));
           break;
         case 'link': {
           const rawHref = typeof token.href === 'string' ? token.href.trim() : '';
@@ -676,23 +699,23 @@ export class MarkdownToDocxConverter {
           if (isExternal) {
             runs.push(new ExternalHyperlink({
               link: finalHref,
-              children: [new TextRun({ text: finalText, style: 'Hyperlink' })],
+              children: [new TextRun({ text: finalText, ...defaultStyle, style: 'Hyperlink' })],
             }));
           } else {
             const anchorText = finalHref.replace(/^#/, '');
             const anchor = this.sanitizeBookmarkName(anchorText);
             runs.push(new InternalHyperlink({
               anchor,
-              children: [new TextRun({ text: finalText, color: '0000FF', underline: {} })],
+              children: [new TextRun({ text: finalText, ...defaultStyle, color: '0000FF', underline: {} })],
             }));
           }
           break;
         }
         case 'image':
           if (token.href && token.href.startsWith('data:image/')) {
-            runs.push(new TextRun({ text: `[${token.alt || 'Image'}]`, italics: true, color: '666666' }));
+            runs.push(new TextRun({ text: `[${token.alt || 'Image'}]`, ...defaultStyle, italics: true, color: '666666' }));
           } else {
-            runs.push(new TextRun({ text: `[Image: ${token.alt || token.href}]`, italics: true, color: '666666' }));
+            runs.push(new TextRun({ text: `[Image: ${token.alt || token.href}]`, ...defaultStyle, italics: true, color: '666666' }));
           }
           break;
         default:
@@ -707,6 +730,7 @@ export class MarkdownToDocxConverter {
 
   private processInlineTokensWithStyle(tokens: any[], baseStyle: any): any[] {
     const runs: any[] = [];
+    const defaultStyle = this.getDefaultTextStyle();
 
     tokens.forEach(token => {
       switch (token.type) {
@@ -740,7 +764,7 @@ export class MarkdownToDocxConverter {
           break;
         case 'codespan':
         case 'code':
-          runs.push(new TextRun({ text: this.decodeHtmlEntities(token.text), ...baseStyle, font: 'Courier New' }));
+          runs.push(new TextRun({ text: this.decodeHtmlEntities(token.text), ...defaultStyle, ...baseStyle, font: 'Courier New' }));
           break;
         case 'link': {
           const rawHref = typeof token.href === 'string' ? token.href.trim() : '';
@@ -755,14 +779,14 @@ export class MarkdownToDocxConverter {
           if (isExternal) {
             runs.push(new ExternalHyperlink({
               link: finalHref,
-              children: [new TextRun({ text: finalText, style: 'Hyperlink', ...baseStyle })],
+              children: [new TextRun({ text: finalText, ...defaultStyle, ...baseStyle, style: 'Hyperlink' })],
             }));
           } else {
             const anchorText = finalHref.replace(/^#/, '');
             const anchor = this.sanitizeBookmarkName(anchorText);
             runs.push(new InternalHyperlink({
               anchor,
-              children: [new TextRun({ text: finalText, color: '0000FF', underline: {}, ...baseStyle })],
+              children: [new TextRun({ text: finalText, ...defaultStyle, ...baseStyle, color: '0000FF', underline: {} })],
             }));
           }
           break;
@@ -781,15 +805,18 @@ export class MarkdownToDocxConverter {
   private processTextWithInlineHtml(text: string, baseStyle: any = {}): TextRun[] {
     const runs: TextRun[] = [];
     if (!text || typeof text !== 'string') {
-      return [new TextRun({ text: '', ...baseStyle })];
+      const defaultStyle = this.getDefaultTextStyle();
+      return [new TextRun({ text: '', ...defaultStyle, ...baseStyle })];
     }
 
     let remaining = this.decodeHtmlEntities(text);
+    const defaultStyle = this.getDefaultTextStyle();
+    
     while (remaining.length > 0) {
       // Line break: <br>, <br/>, <br />
       const br = remaining.match(/^(.*?)<br\s*\/?>\s*(.*)$/i);
       if (br) {
-        if (br[1]) runs.push(new TextRun({ text: br[1], ...baseStyle }));
+        if (br[1]) runs.push(new TextRun({ text: br[1], ...defaultStyle, ...baseStyle }));
         runs.push(new TextRun({ break: 1 } as any));
         remaining = br[2];
         continue;
@@ -798,8 +825,8 @@ export class MarkdownToDocxConverter {
       // Underline
       const u = remaining.match(/^(.*?)<u>(.*?)<\/u>(.*)$/s);
       if (u) {
-        if (u[1]) runs.push(new TextRun({ text: u[1], ...baseStyle }));
-        if (u[2]) runs.push(new TextRun({ text: u[2], ...baseStyle, underline: {} }));
+        if (u[1]) runs.push(new TextRun({ text: u[1], ...defaultStyle, ...baseStyle }));
+        if (u[2]) runs.push(new TextRun({ text: u[2], ...defaultStyle, ...baseStyle, underline: {} }));
         remaining = u[3];
         continue;
       }
@@ -807,8 +834,8 @@ export class MarkdownToDocxConverter {
       // Bold
       const b = remaining.match(/^(.*?)<(?:b|strong)>(.*?)<\/(?:b|strong)>(.*)$/s);
       if (b) {
-        if (b[1]) runs.push(new TextRun({ text: b[1], ...baseStyle }));
-        if (b[2]) runs.push(new TextRun({ text: b[2], ...baseStyle, bold: true }));
+        if (b[1]) runs.push(new TextRun({ text: b[1], ...defaultStyle, ...baseStyle }));
+        if (b[2]) runs.push(new TextRun({ text: b[2], ...defaultStyle, ...baseStyle, bold: true }));
         remaining = b[3];
         continue;
       }
@@ -816,8 +843,8 @@ export class MarkdownToDocxConverter {
       // Italic
       const i = remaining.match(/^(.*?)<(?:i|em)>(.*?)<\/(?:i|em)>(.*)$/s);
       if (i) {
-        if (i[1]) runs.push(new TextRun({ text: i[1], ...baseStyle }));
-        if (i[2]) runs.push(new TextRun({ text: i[2], ...baseStyle, italics: true }));
+        if (i[1]) runs.push(new TextRun({ text: i[1], ...defaultStyle, ...baseStyle }));
+        if (i[2]) runs.push(new TextRun({ text: i[2], ...defaultStyle, ...baseStyle, italics: true }));
         remaining = i[3];
         continue;
       }
@@ -825,14 +852,14 @@ export class MarkdownToDocxConverter {
       // Strikethrough
       const s = remaining.match(/^(.*?)<(?:s|del)>(.*?)<\/(?:s|del)>(.*)$/s);
       if (s) {
-        if (s[1]) runs.push(new TextRun({ text: s[1], ...baseStyle }));
-        if (s[2]) runs.push(new TextRun({ text: s[2], ...baseStyle, strike: true }));
+        if (s[1]) runs.push(new TextRun({ text: s[1], ...defaultStyle, ...baseStyle }));
+        if (s[2]) runs.push(new TextRun({ text: s[2], ...defaultStyle, ...baseStyle, strike: true }));
         remaining = s[3];
         continue;
       }
 
       // No more tags
-      runs.push(new TextRun({ text: remaining, ...baseStyle }));
+      runs.push(new TextRun({ text: remaining, ...defaultStyle, ...baseStyle }));
       break;
     }
 
@@ -841,8 +868,10 @@ export class MarkdownToDocxConverter {
 
   private parseBasicInlineFormatting(text: string, baseStyle: any = {}): TextRun[] {
     // Approche simple et robuste pour le formatage de base
+    const defaultStyle = this.getDefaultTextStyle();
+    
     if (!text) {
-      return [new TextRun({ text: '', ...baseStyle })];
+      return [new TextRun({ text: '', ...defaultStyle, ...baseStyle })];
     }
     
     // Juste traiter **gras** de base pour commencer
@@ -854,14 +883,14 @@ export class MarkdownToDocxConverter {
         if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
           // Texte en gras
           const boldText = part.substring(2, part.length - 2);
-          runs.push(new TextRun({ text: boldText, ...baseStyle, bold: true }));
+          runs.push(new TextRun({ text: boldText, ...defaultStyle, ...baseStyle, bold: true }));
         } else if (part) {
           // Texte normal
-          runs.push(new TextRun({ text: part, ...baseStyle }));
+          runs.push(new TextRun({ text: part, ...defaultStyle, ...baseStyle }));
         }
       });
       
-      return runs.length > 0 ? runs : [new TextRun({ text, ...baseStyle })];
+      return runs.length > 0 ? runs : [new TextRun({ text, ...defaultStyle, ...baseStyle })];
     }
     
     // Traiter *italique* de base
@@ -873,14 +902,14 @@ export class MarkdownToDocxConverter {
         if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
           // Texte en italique
           const italicText = part.substring(1, part.length - 1);
-          runs.push(new TextRun({ text: italicText, ...baseStyle, italics: true }));
+          runs.push(new TextRun({ text: italicText, ...defaultStyle, ...baseStyle, italics: true }));
         } else if (part) {
           // Texte normal
-          runs.push(new TextRun({ text: part, ...baseStyle }));
+          runs.push(new TextRun({ text: part, ...defaultStyle, ...baseStyle }));
         }
       });
       
-      return runs.length > 0 ? runs : [new TextRun({ text, ...baseStyle })];
+      return runs.length > 0 ? runs : [new TextRun({ text, ...defaultStyle, ...baseStyle })];
     }
     
     // Traiter `code` de base
@@ -892,18 +921,18 @@ export class MarkdownToDocxConverter {
         if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
           // Code
           const codeText = part.substring(1, part.length - 1);
-          runs.push(new TextRun({ text: codeText, ...baseStyle, font: 'Courier New' }));
+          runs.push(new TextRun({ text: codeText, ...defaultStyle, ...baseStyle, font: 'Courier New' }));
         } else if (part) {
           // Texte normal
-          runs.push(new TextRun({ text: part, ...baseStyle }));
+          runs.push(new TextRun({ text: part, ...defaultStyle, ...baseStyle }));
         }
       });
       
-      return runs.length > 0 ? runs : [new TextRun({ text, ...baseStyle })];
+      return runs.length > 0 ? runs : [new TextRun({ text, ...defaultStyle, ...baseStyle })];
     }
     
-    // Aucun formatage d??tect??
-    return [new TextRun({ text, ...baseStyle })];
+    // Aucun formatage détecté
+    return [new TextRun({ text, ...defaultStyle, ...baseStyle })];
   }
 
   private createTableOfContents(): Paragraph {
@@ -984,7 +1013,8 @@ export class MarkdownToDocxConverter {
   }
 
   private createDocument(elements: (Paragraph | Table)[], options: MarkdownToDocxOptions): Document {
-    const template = DocumentTemplates.getTemplate(options.template || 'professional-report');
+    // Use the stored template instead of getting it again
+    const template = this.template;
 
     // Build numbering config: include a bullet config and one ordered config per used reference
     const orderedConfigs = Array.from(this.usedOrderedListRefs).map(ref => ({
@@ -1050,6 +1080,26 @@ export class MarkdownToDocxConverter {
       .replace(/_+/g, '_')
       .replace(/^_|_$/g, '')
       .substring(0, 40) || 'a';
+  }
+
+  private getDefaultTextStyle(): any {
+    // Get the default text style from template if available
+    if (this.template && this.template.styles && this.template.styles.default && this.template.styles.default.document) {
+      const defaultDoc = this.template.styles.default.document;
+      if (defaultDoc.run) {
+        return {
+          font: defaultDoc.run.font,
+          size: defaultDoc.run.size,
+          color: defaultDoc.run.color
+        };
+      }
+    }
+    
+    // Default fallback
+    return {
+      font: 'Calibri',
+      size: 22  // 11pt in half-points
+    };
   }
 
   private extractTextFromTokens(tokens: any[]): string {
