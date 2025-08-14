@@ -723,6 +723,18 @@ export class DocumentTemplates {
             insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: 'EDEBE9' },
             insideVertical: { style: BorderStyle.NONE },
           },
+          cell: {
+            run: {
+              size: 16, // 8pt
+              font: 'Segoe UI',
+              color: '323130',
+            },
+            paragraph: {
+              spacing: {
+                after: 60,
+              },
+            },
+          },
         },
         paragraph: {
           normal: {

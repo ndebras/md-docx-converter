@@ -501,7 +501,16 @@ export class MarkdownToDocxConverter {
 
   private createTable(token: any): Table {
     const cellRuns = (cell: any, isHeader = false): TextRun[] => {
-      const baseStyle = isHeader ? { bold: true } : {};
+      // Get table cell style from template
+      const tableCellStyle = this.template?.styles?.table?.cell?.run;
+      const defaultStyle = tableCellStyle ? {
+        font: tableCellStyle.font,
+        size: tableCellStyle.size,
+        color: tableCellStyle.color
+      } : this.getDefaultTextStyle();
+      
+      const baseStyle = isHeader ? { ...defaultStyle, bold: true } : defaultStyle;
+      
       if (typeof cell === 'string') {
         return this.parseSimpleMarkdown(cell, baseStyle);
       }
@@ -512,12 +521,17 @@ export class MarkdownToDocxConverter {
         return this.parseSimpleMarkdown(cell.text, baseStyle);
       }
       // Fallback: convertir en chaîne proprement
-      const defaultStyle = this.getDefaultTextStyle();
-      return [new TextRun({ text: String(cell ?? ''), ...defaultStyle, ...baseStyle })];
+      return [new TextRun({ text: String(cell ?? ''), ...baseStyle })];
     };
 
+    // Get table cell paragraph style from template
+    const tableCellParagraphStyle = this.template?.styles?.table?.cell?.paragraph;
+
     const headerCells = token.header.map((cell: any) => new TableCell({
-      children: [new Paragraph({ children: cellRuns(cell, true) })],
+      children: [new Paragraph({ 
+        children: cellRuns(cell, true),
+        spacing: tableCellParagraphStyle?.spacing
+      })],
       shading: { fill: 'E6E6E6' },
     }));
 
@@ -525,7 +539,10 @@ export class MarkdownToDocxConverter {
 
     token.rows.forEach((rowData: any[]) => {
       const dataCells = rowData.map((cell: any) => new TableCell({
-        children: [new Paragraph({ children: cellRuns(cell, false) })],
+        children: [new Paragraph({ 
+          children: cellRuns(cell, false),
+          spacing: tableCellParagraphStyle?.spacing
+        })],
       }));
       rows.push(new TableRow({ children: dataCells }));
     });
