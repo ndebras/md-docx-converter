@@ -11,7 +11,7 @@
 
 ## 🎯 **Overview**
 
-A Node.js application designed to convert Markdown files (with Mermaid support) to DOCX format and vice versa Perfect for technical documentation, reports, and automated document workflows.
+A Node.js application designed to convert Markdown files (with Mermaid support) to DOCX format and vice versa.  Perfect for technical documentation, reports, and automated document workflows.
 
 ---
 
@@ -76,7 +76,7 @@ Main commands:
 - extract <input.docx> → Markdown
 - batch <input-dir>   → bulk convert
 - validate <input.md> → check file
-- stats <input>        → show stats
+- stats < input >        → show stats
 - list                 → templates & themes
 
 Common options:
