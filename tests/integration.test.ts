@@ -216,6 +216,20 @@ invalid mermaid syntax here
       // Should still succeed but may have warnings
       expect(result.success).toBe(true);
     });
+
+    test('should reject Mermaid diagrams with unsafe HTML', async () => {
+      const markdown = `# Unsafe Diagram
+
+\`\`\`mermaid
+<script>alert('x')</script>
+\`\`\`
+`;
+
+      const result = await converter.markdownToDocx(markdown);
+
+      expect(result.success).toBe(false);
+      expect(result.error?.message).toContain('unsafe');
+    });
   });
 
   describe('Performance', () => {

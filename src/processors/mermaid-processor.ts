@@ -5,6 +5,7 @@ import { StringUtils, PerformanceUtils } from '../utils';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
+import { pathToFileURL } from 'url';
 
 /**
  * Advanced Mermaid diagram processor with multiple output formats
@@ -34,8 +35,13 @@ export class MermaidProcessor {
       try {
         // Extract diagram code
         const diagramCode = block.replace(/```mermaid\s*\n/, '').replace(/\n```$/, '').trim();
-        
+
         if (diagramCode) {
+          const validation = await this.validateDiagram(diagramCode);
+          if (!validation.isValid) {
+            throw new Error(validation.error || 'Invalid Mermaid diagram');
+          }
+
           // Create a better text-based representation for DOCX compatibility
           const textRepresentation = this.createEnhancedTextualDiagramRepresentation(diagramCode);
           processedContent = processedContent.replace(block, textRepresentation);
@@ -589,8 +595,9 @@ ${relationships.map(rel => `   ${rel}`).join('\n')}
       await this.page.setViewport({ width: 1200, height: 800 });
 
       // Load Mermaid library
+      const mermaidPath = path.resolve(__dirname, '../../vendor/mermaid.min.js');
       await this.page.addScriptTag({
-        url: 'https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js',
+        path: mermaidPath,
       });
 
       // Initialize Mermaid with configuration
@@ -598,7 +605,7 @@ ${relationships.map(rel => `   ${rel}`).join('\n')}
         (window as any).mermaid.initialize({
           startOnLoad: false,
           theme: theme,
-          securityLevel: 'loose',
+          securityLevel: 'strict',
           fontFamily: 'Arial, sans-serif',
           fontSize: 14,
           flowchart: {
@@ -647,6 +654,11 @@ ${relationships.map(rel => `   ${rel}`).join('\n')}
   ): Promise<ProcessedMermaidDiagram> {
     if (!this.isInitialized) {
       await this.initialize();
+    }
+
+    const validation = await this.validateDiagram(mermaidCode);
+    if (!validation.isValid) {
+      throw new Error(validation.error || 'Invalid Mermaid diagram');
     }
 
     const {
@@ -768,6 +780,10 @@ ${relationships.map(rel => `   ${rel}`).join('\n')}
     isValid: boolean;
     error?: string;
   }> {
+    if (/<script[\s\S]*?>/i.test(mermaidCode) || /on\w+\s*=|javascript:/i.test(mermaidCode)) {
+      return { isValid: false, error: 'Diagram contains potentially unsafe HTML' };
+    }
+
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -852,6 +868,7 @@ ${relationships.map(rel => `   ${rel}`).join('\n')}
     const id = uuidv4();
 
     // Set page content with Mermaid diagram
+    const mermaidUrl = pathToFileURL(path.resolve(__dirname, '../../vendor/mermaid.min.js')).href;
     await this.page!.setContent(`
       <!DOCTYPE html>
       <html>
@@ -873,12 +890,12 @@ ${relationships.map(rel => `   ${rel}`).join('\n')}
         </head>
         <body>
           <div class="mermaid">${mermaidCode}</div>
-          <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+          <script src="${mermaidUrl}"></script>
           <script>
             mermaid.initialize({
               startOnLoad: true,
               theme: '${this.theme}',
-              securityLevel: 'loose',
+              securityLevel: 'strict',
             });
           </script>
         </body>
